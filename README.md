@@ -44,6 +44,13 @@ docker compose up -d postgres
 docker compose up -d --build
 ```
 
+To rebuild from a clean state:
+
+```powershell
+docker compose down -v
+docker compose up -d --build --wait
+```
+
 The API container runs:
 
 1. `python manage.py migrate`
@@ -69,6 +76,13 @@ Default values:
 For local Python runs, use `POSTGRES_HOST=localhost`.
 For compose API container runs, `POSTGRES_HOST` is automatically set to `postgres`.
 
+### 3b) Verify running services
+
+```powershell
+docker compose ps
+docker compose logs --tail 100 api
+```
+
 ### 4) Run migrations
 
 ```powershell
@@ -82,15 +96,35 @@ For compose API container runs, `POSTGRES_HOST` is automatically set to `postgre
 "d:/Masters/UNIBZ/Semester 2/GDSD - Sweden/.venv/Scripts/python.exe" manage.py seed_offers
 ```
 
-## API Endpoints
+## Local URLs
 
-When compose is up, test on `http://localhost:8000`:
+When compose is running, use:
 
-- `/api/health`
-- `/api/lookups/offer-types`
-- `/api/lookups/domains`
-- `/api/offers`
-- `/api/offers/{offer_id}`
+- API base: `http://localhost:8000/api`
+- API quick docs page: `http://localhost:8000/api` or `http://localhost:8000/api/docs`
+- Health check: `http://localhost:8000/api/health`
+
+## Current API Endpoints
+
+All endpoints are read-only (`GET`):
+
+- `/api` - human-friendly quick docs page
+- `/api/docs` - same quick docs page
+- `/api/health` - service health
+- `/api/lookups/offer-types` - OfferType reference data
+- `/api/lookups/domains` - Domain reference data
+- `/api/offers` - offer list
+	- optional query params: `limit`, `status`, `offer_type`, `organization`, `target_profile`
+- `/api/offers/{offer_id}` - offer detail by UUID
+
+### Quick smoke test (PowerShell)
+
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8000/api/health"
+Invoke-RestMethod -Uri "http://localhost:8000/api/lookups/offer-types"
+Invoke-RestMethod -Uri "http://localhost:8000/api/lookups/domains"
+Invoke-RestMethod -Uri "http://localhost:8000/api/offers?limit=5"
+```
 
 ## Seed Sources
 

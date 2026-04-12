@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
 from content.models import Domain, Offer, OfferType
@@ -45,6 +46,11 @@ def _offer_to_dict(offer: Offer) -> dict:
 @require_GET
 def health(request):
 	return JsonResponse({"status": "ok"})
+
+
+@require_GET
+def api_docs(request):
+	return render(request, "content/api_docs.html")
 
 
 @require_GET

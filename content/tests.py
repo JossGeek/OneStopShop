@@ -54,6 +54,11 @@ class ReadApiTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.json()["status"], "ok")
 
+	def test_docs_endpoint(self):
+		response = self.client.get("/api/docs")
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "SUNRISE OSS API Quick Docs")
+
 	def test_offer_types_endpoint(self):
 		response = self.client.get("/api/lookups/offer-types")
 		payload = response.json()
