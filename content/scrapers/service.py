@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import timedelta
+from copy import deepcopy
 
 import requests
 from django.db import transaction
@@ -68,6 +69,7 @@ class ScrapeService:
             "llm_calls": 0,
         }
         seen_keys: set[tuple[str, str, str]] = set()
+        successful_source_keys: set[str] = set()
 
         for source in sources:
             stats["sources"] += 1
@@ -95,12 +97,24 @@ class ScrapeService:
                 stats["offers_unchanged"] += run.offers_unchanged
                 stats["llm_calls"] += run.llm_calls_count
                 seen_keys.add(result["natural_key"])
+                successful_source_keys.add(source.key)
             except Exception as exc:  # pragma: no cover - runtime network behavior
                 run.status = ScrapingRun.RunStatus.FAILED
                 run.errors_count = 1
-                run.log = [{"error": str(exc), "source": source.key}]
+                run.log = [self._build_error_log(source, exc)]
                 stats["errors"] += 1
-                LOGGER.exception("Scraping failed for %s", source.key)
+                if isinstance(exc, requests.exceptions.HTTPError) and exc.response is not None:
+                    status_code = exc.response.status_code
+                    if status_code in {404, 410}:
+                        LOGGER.warning(
+                            "Scraping source not found for %s (HTTP %s)",
+                            source.key,
+                            status_code,
+                        )
+                    else:
+                        LOGGER.exception("Scraping failed for %s", source.key)
+                else:
+                    LOGGER.exception("Scraping failed for %s", source.key)
             finally:
                 now = timezone.now()
                 run.completed_at = now
@@ -109,7 +123,12 @@ class ScrapeService:
                 job.next_run_at = now + timedelta(minutes=source.interval_minutes)
                 job.save(update_fields=["last_run_at", "next_run_at", "updated_at"])
 
-        stale_count = self._flag_stale_candidates(sources, seen_keys, ingestion_user)
+        stale_count = self._flag_stale_candidates(
+            sources,
+            seen_keys,
+            successful_source_keys,
+            ingestion_user,
+        )
         stats["offers_flagged_stale"] = stale_count
 
         return stats
@@ -201,13 +220,15 @@ class ScrapeService:
             offer_type=offer_type,
         ).first()
 
+        current_timestamp = timezone.now().isoformat()
+
         scraping_metadata = {
             "managed": True,
             "source_key": source.key,
             "quality": source.quality,
             "method": extracted.method,
             "confidence": extracted.confidence,
-            "last_seen_at": timezone.now().isoformat(),
+            "last_seen_at": current_timestamp,
             "stale_candidate": False,
         }
 
@@ -237,12 +258,17 @@ class ScrapeService:
             self._replace_domains(offer, source.domain_names)
             return "created", natural_key
 
+        existing_domain_names = set(existing.domains.values_list("name", flat=True))
+        source_domain_names = set(source.domain_names)
+
         changed = (
             existing.title != extracted.title
             or existing.summary != extracted.summary
             or existing.country != source.country
             or existing.target_profile_id != target_profile.id
-            or existing.details != merged_details
+            or existing_domain_names != source_domain_names
+            or self._normalized_details_for_compare(existing.details)
+            != self._normalized_details_for_compare(merged_details)
         )
 
         if not changed:
@@ -296,6 +322,7 @@ class ScrapeService:
         self,
         sources: list[SourceDefinition],
         seen_keys: set[tuple[str, str, str]],
+        successful_source_keys: set[str],
         ingestion_user: User,
     ) -> int:
         source_keys = {source.key for source in sources}
@@ -305,7 +332,10 @@ class ScrapeService:
             scraping = details.get("scraping")
             if not isinstance(scraping, dict):
                 continue
-            if scraping.get("source_key") not in source_keys:
+            source_key = scraping.get("source_key")
+            if source_key not in source_keys:
+                continue
+            if source_key not in successful_source_keys:
                 continue
 
             natural_key = (offer.link, str(offer.organization_id), str(offer.offer_type_id))
@@ -328,6 +358,31 @@ class ScrapeService:
             offer.save(update_fields=["details", "updated_by", "updated_at"])
 
         return stale_count
+
+    @staticmethod
+    def _normalized_details_for_compare(details: dict | None) -> dict:
+        if not isinstance(details, dict):
+            return {}
+
+        normalized = deepcopy(details)
+        scraping = normalized.get("scraping")
+        if isinstance(scraping, dict):
+            for key in ("last_seen_at", "stale_candidate", "stale_marked_at", "stale_reason"):
+                scraping.pop(key, None)
+            normalized["scraping"] = scraping
+        return normalized
+
+    @staticmethod
+    def _build_error_log(source: SourceDefinition, exc: Exception) -> dict:
+        error_entry = {
+            "error": str(exc),
+            "source": source.key,
+            "url": source.url,
+            "error_type": exc.__class__.__name__,
+        }
+        if isinstance(exc, requests.exceptions.HTTPError) and exc.response is not None:
+            error_entry["http_status"] = exc.response.status_code
+        return error_entry
 
 
 @transaction.atomic

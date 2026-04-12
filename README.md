@@ -145,6 +145,7 @@ Runtime behavior:
 - deterministic extraction first (BeautifulSoup/JSON-LD/text heuristics)
 - optional Ollama fallback (`qwen3-coder:480b-cloud`) when confidence is low
 - freshness policy: mark stale candidates in `details.scraping`, never auto-archive
+- source fetch failures (for example HTTP 404/410) are stored as failed runs in `scraping_run` with structured error metadata, and do not automatically mark offers stale in that same failed cycle
 
 Useful commands:
 
