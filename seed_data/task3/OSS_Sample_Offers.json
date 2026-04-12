@@ -1,0 +1,583 @@
+{
+  "_meta": {
+    "description": "Task 3 sample dataset — 17 Offer records covering all 15 OfferTypes for UI/API testing. v1.0, March 2026.",
+    "instructions": "Load lookup tables from OSS_Mapping_Seed.json first (OfferType, Domain, TargetProfile, SourceType). Then replace all UUID placeholders with real UUIDs and load each record in the 'offers' array into the Offer table. Load domain_ids entries into the OfferDomain junction table (pending D-02 resolution for Contact records).",
+    "placeholder_reference": {
+      "organizations": {
+        "{unibz}": "Free University of Bozen-Bolzano (UNIBZ), Italy",
+        "{mdu}":   "Malardalen University (MDU), Sweden"
+      },
+      "offer_types": "See OSS_Mapping_Seed.json — offer_types array",
+      "domains":     "See OSS_Mapping_Seed.json — domains array",
+      "source_types": {
+        "{st_scraping}": "Automated web scrape — enters as draft, requires curator review",
+        "{st_manual}":   "Created directly by partner admin"
+      },
+      "target_profiles": {
+        "{tp_student}":    "Undergraduate or postgraduate student",
+        "{tp_company}":    "SME, startup, or large enterprise",
+        "{tp_researcher}": "Academic, postdoc, or industry researcher"
+      },
+      "users": {
+        "{user_ingestion_bot}": "System user for automated ingestion",
+        "{user_admin_unibz}":   "UNIBZ partner admin account",
+        "{user_admin_mdu}":     "MDU partner admin account"
+      }
+    },
+    "coverage": {
+      "total_offers": 17,
+      "offer_types_covered": 15,
+      "offer_types_list": [
+        "training (3 records — master/published, phd/draft, executive/archived)",
+        "internship", "thesis", "event", "mobility", "lab", "testbed",
+        "expertise", "service", "co_creation", "research_group",
+        "funding_partner", "project_opportunity", "hackathon", "challenge"
+      ],
+      "status_distribution": {
+        "draft": 9,
+        "published": 7,
+        "archived": 1
+      },
+      "organization_distribution": {
+        "{unibz}": 14,
+        "{mdu}": 3
+      },
+      "target_profile_distribution": {
+        "{tp_student}": 6,
+        "{tp_company}": 6,
+        "{tp_researcher}": 5
+      }
+    },
+    "validation": {
+      "schema_source": "Task 1 data model (10 entities) + Task 2 OSS_Ontology_Mapping_Rules.md Section 2",
+      "checks_applied": [
+        "All required Offer fields present: id, title, summary, link, country, status, offer_type_id, organization_id, source_type_id, target_profile_id, created_at, updated_at, created_by, updated_by",
+        "status values restricted to: draft | published | archived",
+        "country values are ISO 3166-1 alpha-2 (IT, SE)",
+        "offer_type_id placeholders match the 15 canonical OfferType names in Mapping_Seed.json",
+        "domain_ids placeholders match the 14 canonical Domain names in Mapping_Seed.json",
+        "details JSON structure matches the Section 2 schema for each OfferType",
+        "All scraped records enter as draft (source_type = scraping → status = draft)",
+        "Manual records may be draft or published depending on partner admin action",
+        "Archived record (offer_017) tests the end-of-lifecycle status",
+        "target_profile_id values restricted to: student | company | researcher"
+      ],
+      "open_decisions_impact": {
+        "D-01": "No Contact records included in this dataset pending contact_approved schema decision",
+        "D-02": "domain_ids arrays represent OfferDomain junction table entries — load separately"
+      }
+    }
+  },
+
+  "offers": [
+
+    {
+      "_note": "OfferType: training | Level: master | Status: published — tests a fully approved record",
+      "id": "{offer_001}",
+      "title": "Master in Software Engineering",
+      "summary": "Two-year Master degree at NOI Techpark Bozen-Bolzano. Prepares graduates for roles as software engineers in analysis, design, implementation, and maintenance of intelligent software solutions. Integrates AI throughout multiple courses with hands-on coverage of Cloud Computing, IoT, Data Analytics, and cyber-physical systems. Taught entirely in English. 120 ECTS. Accredited as LM-18.",
+      "link": "https://www.unibz.it/en/faculties/engineering/master-software-engineering/",
+      "country": "IT",
+      "status": "published",
+      "offer_type_id": "{ot_training}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_student}",
+      "domain_ids": ["{dom_ai}", "{dom_digital}", "{dom_industry}"],
+      "created_at": "2026-03-29T08:00:00Z",
+      "updated_at": "2026-03-29T10:00:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_admin_unibz}",
+      "details": {
+        "ects": 120,
+        "duration": "2 years",
+        "format": "onsite",
+        "level": "master",
+        "certification": "LM-18",
+        "application_deadline_early": "2026-04-28",
+        "application_deadline_late_eu": "2026-07-08",
+        "start_date": "2027-09-01",
+        "places_eu": 30,
+        "places_non_eu": 30,
+        "tuition_eur_per_year": 1200,
+        "location": "NOI Techpark Bozen-Bolzano, Bruno-Buozzi-Str. 1, 39100 Bozen-Bolzano, Italy",
+        "language": "en"
+      }
+    },
+
+    {
+      "_note": "OfferType: training | Level: phd | Status: draft — tests doctoral-level training and researcher target profile",
+      "id": "{offer_002}",
+      "title": "PhD Programme in Computer Science",
+      "summary": "Doctoral programme at UNIBZ Faculty of Engineering offering supervised research in artificial intelligence, software engineering, computer vision, and human-computer interaction. Candidates enrol for 3 years and are expected to publish at international venues. Positions are funded via individual research grants or competitive calls.",
+      "link": "https://www.unibz.it/en/faculties/engineering/phd-computer-science/",
+      "country": "IT",
+      "status": "draft",
+      "offer_type_id": "{ot_training}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_researcher}",
+      "domain_ids": ["{dom_ai}", "{dom_digital}"],
+      "created_at": "2026-03-29T08:05:00Z",
+      "updated_at": "2026-03-29T08:05:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_ingestion_bot}",
+      "details": {
+        "ects": null,
+        "duration": "3 years",
+        "format": "onsite",
+        "level": "phd",
+        "certification": null,
+        "application_deadline_early": null,
+        "start_date": "2027-11-01",
+        "places_eu": null,
+        "places_non_eu": null,
+        "tuition_eur_per_year": 0,
+        "location": "Faculty of Engineering, Piazza Università 5, 39100 Bozen-Bolzano, Italy",
+        "language": "en"
+      }
+    },
+
+    {
+      "_note": "OfferType: training | Level: bachelor | Status: draft — completes the degree-level coverage for training",
+      "id": "{offer_003}",
+      "title": "Bachelor in Computer Science and Engineering",
+      "summary": "Three-year Bachelor programme at UNIBZ Faculty of Engineering. Provides foundational knowledge in algorithms, programming, operating systems, databases, and networked systems, with elective tracks in cybersecurity and data science. Delivered in English with Italian and German language support. 180 ECTS. Accredited as L-8.",
+      "link": "https://www.unibz.it/en/faculties/engineering/bachelor-computer-science/",
+      "country": "IT",
+      "status": "draft",
+      "offer_type_id": "{ot_training}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_student}",
+      "domain_ids": ["{dom_digital}", "{dom_cyber}"],
+      "created_at": "2026-03-29T08:06:00Z",
+      "updated_at": "2026-03-29T08:06:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_ingestion_bot}",
+      "details": {
+        "ects": 180,
+        "duration": "3 years",
+        "format": "onsite",
+        "level": "bachelor",
+        "certification": "L-8",
+        "application_deadline_early": "2026-04-28",
+        "application_deadline_late_eu": "2026-07-08",
+        "start_date": "2027-09-01",
+        "places_eu": 60,
+        "places_non_eu": 20,
+        "tuition_eur_per_year": 1200,
+        "location": "Faculty of Engineering, Piazza Università 5, 39100 Bozen-Bolzano, Italy",
+        "language": "multilingual"
+      }
+    },
+
+    {
+      "_note": "OfferType: internship | Status: published — tests industry placement with stipend data",
+      "id": "{offer_004}",
+      "title": "Industry Internship Programme — UNIBZ Faculty of Engineering",
+      "summary": "UNIBZ facilitates internship placements for students in the final year of their Bachelor or Master programmes. Placements are arranged with regional technology companies at NOI Techpark and in the greater Bolzano area. Duration is 3–6 months. Eligible students receive academic recognition (CFU credits) upon successful completion. Placements are coordinated through the Faculty Job Placement Office.",
+      "link": "https://www.unibz.it/en/faculties/engineering/internship/",
+      "country": "IT",
+      "status": "published",
+      "offer_type_id": "{ot_internship}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_student}",
+      "domain_ids": ["{dom_industry}", "{dom_digital}"],
+      "created_at": "2026-03-29T08:10:00Z",
+      "updated_at": "2026-03-29T09:00:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_admin_unibz}",
+      "details": {
+        "duration": "3–6 months",
+        "requirements": "Final-year Bachelor or Master student at UNIBZ; enrolled in an engineering programme",
+        "host_entity": "NOI Techpark member companies and regional technology partners (varies by placement)",
+        "location": "Bozen-Bolzano and surrounding South Tyrol region, Italy",
+        "paid": true,
+        "stipend_eur_per_month": 800
+      }
+    },
+
+    {
+      "_note": "OfferType: thesis | Status: draft — tests research-output-primary offer and SE university",
+      "id": "{offer_005}",
+      "title": "Licentiate Thesis in Autonomous Systems — Mälardalen University",
+      "summary": "MDU offers supervised Licentiate thesis projects within the Future Autonomous Systems (FAS) research specialisation. The Swedish Licentiate is a mid-level research degree (approximately 120 HEC), typically completed over 2 years. Students engage in original research under a principal supervisor and defend publicly. Research topics include real-time systems, robotics, self-driving vehicles, and AI safety.",
+      "link": "https://www.mdu.se/en/malardalen-university/research/research-specialisations/future-autonomous-systems",
+      "country": "SE",
+      "status": "draft",
+      "offer_type_id": "{ot_thesis}",
+      "organization_id": "{mdu}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_researcher}",
+      "domain_ids": ["{dom_robotics}", "{dom_ai}"],
+      "created_at": "2026-03-29T08:15:00Z",
+      "updated_at": "2026-03-29T08:15:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_ingestion_bot}",
+      "details": {
+        "duration": "2 years",
+        "requirements": "Enrolled doctoral or Licentiate student at MDU; Bachelor in Computer Science, Electrical Engineering, or equivalent",
+        "host_entity": null,
+        "research_area": "Autonomous systems — real-time OS, robotics, AI safety, and self-driving vehicle technology",
+        "language": "en"
+      }
+    },
+
+    {
+      "_note": "OfferType: event | Status: published | source: manual — tests a time-bounded attendance record",
+      "id": "{offer_006}",
+      "title": "UNIBZ Faculty of Engineering Annual Research Symposium 2026",
+      "summary": "The annual research symposium of the UNIBZ Faculty of Engineering showcases ongoing research across all research groups. PhD students and faculty present work-in-progress results. Industry partners and academic guests are invited to attend sessions covering AI, software engineering, embedded systems, and applied mathematics. Free to attend; registration required for planning purposes.",
+      "link": "https://www.unibz.it/en/faculties/engineering/research/symposium-2026/",
+      "country": "IT",
+      "status": "published",
+      "offer_type_id": "{ot_event}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_manual}",
+      "target_profile_id": "{tp_researcher}",
+      "domain_ids": ["{dom_ai}", "{dom_innov}"],
+      "created_at": "2026-03-29T08:20:00Z",
+      "updated_at": "2026-03-29T08:20:00Z",
+      "created_by": "{user_admin_unibz}",
+      "updated_by": "{user_admin_unibz}",
+      "details": {
+        "event_date": "2026-06-15",
+        "end_date": "2026-06-16",
+        "location": "NOI Techpark Bozen-Bolzano, Seminar Rooms A1–A3, Bruno-Buozzi-Str. 1, 39100 Bozen-Bolzano, Italy",
+        "organizer": "UNIBZ Faculty of Engineering Research Office",
+        "registration_required": true,
+        "registration_deadline": "2026-06-10",
+        "language": "en"
+      }
+    },
+
+    {
+      "_note": "OfferType: mobility | Status: draft — tests cross-border bilateral programme with Erasmus grant",
+      "id": "{offer_007}",
+      "title": "Erasmus+ Study Exchange — UNIBZ to Mälardalen University (Sweden)",
+      "summary": "UNIBZ students enrolled in Bachelor or Master programmes can apply for an Erasmus+ exchange semester at Mälardalen University (MDU) in Västerås, Sweden. Places are available within the bilateral Erasmus agreement between the two institutions. Students may attend courses in computer science, engineering, and data science at MDU. An Erasmus grant of approximately EUR 450–600/month is available, subject to budget allocation. All courses are delivered in English.",
+      "link": "https://www.unibz.it/en/services/student-exchange/erasmus/",
+      "country": "IT",
+      "status": "draft",
+      "offer_type_id": "{ot_mobility}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_student}",
+      "domain_ids": ["{dom_mobility}"],
+      "created_at": "2026-03-29T08:25:00Z",
+      "updated_at": "2026-03-29T08:25:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_ingestion_bot}",
+      "details": {
+        "destination_country": "SE",
+        "destination_institution": "Mälardalen University (MDU), Västerås, Sweden",
+        "duration": "1 semester (approx. 30 ECTS)",
+        "programme_type": "Erasmus",
+        "grant_available": true,
+        "grant_amount_eur": 525,
+        "eligibility": "Enrolled UNIBZ Bachelor or Master student; minimum 60 ECTS completed; GPA ≥ 27/30 (indicative)",
+        "language": "en"
+      }
+    },
+
+    {
+      "_note": "OfferType: lab | Status: published — tests equipment array and multi-value details fields",
+      "id": "{offer_008}",
+      "title": "EduSpaces Engineering Teaching Labs — UNIBZ",
+      "summary": "EduSpaces is UNIBZ's interdisciplinary teaching laboratory cluster at NOI Techpark, providing students and researchers access to electronics workbenches, 3D printing, prototyping equipment, mechatronics rigs, and a collaborative maker space. Access is open to enrolled UNIBZ students. External academic researchers can request access via the research office. Lab technicians provide equipment training.",
+      "link": "https://www.unibz.it/en/faculties/engineering/eduspaces/",
+      "country": "IT",
+      "status": "published",
+      "offer_type_id": "{ot_lab}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_student}",
+      "domain_ids": ["{dom_tt}", "{dom_steam}"],
+      "created_at": "2026-03-29T08:30:00Z",
+      "updated_at": "2026-03-29T09:30:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_admin_unibz}",
+      "details": {
+        "equipment": ["electronics workbenches", "3D printers", "laser cutters", "mechatronics rigs", "oscilloscopes", "Arduino/Raspberry Pi kits", "IoT sensor arrays"],
+        "research_areas": ["embedded systems", "IoT", "prototyping", "mechatronics"],
+        "access_conditions": "UNIBZ enrolled students: free during lab hours (Mon–Fri 08:00–18:00). External researchers: by appointment via research office.",
+        "location": "NOI Techpark Bozen-Bolzano, Level 1, Bruno-Buozzi-Str. 1, 39100 Bozen-Bolzano, Italy",
+        "capacity": 24
+      }
+    },
+
+    {
+      "_note": "OfferType: testbed | Status: published | target: company — tests industrial validation facility with fee-based cost model",
+      "id": "{offer_009}",
+      "title": "NOI Techpark Industrial IoT Validation Testbed",
+      "summary": "The IoT Validation Testbed at NOI Techpark Bozen-Bolzano provides SMEs and industry partners with a controlled environment to test, validate, and demonstrate IoT and Industry 4.0 solutions. The facility includes a simulated production floor with PLC arrays, SCADA systems, industrial sensors, and multi-protocol connectivity (5G, LoRaWAN, Zigbee). Access requires a formal engagement agreement with UNIBZ or NOI. Minimum engagement: 3 months.",
+      "link": "https://noi.bz.it/en/services/laboratories",
+      "country": "IT",
+      "status": "published",
+      "offer_type_id": "{ot_testbed}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_manual}",
+      "target_profile_id": "{tp_company}",
+      "domain_ids": ["{dom_digital}", "{dom_industry}", "{dom_cocreation}"],
+      "created_at": "2026-03-29T08:35:00Z",
+      "updated_at": "2026-03-29T08:35:00Z",
+      "created_by": "{user_admin_unibz}",
+      "updated_by": "{user_admin_unibz}",
+      "details": {
+        "facility_type": "IoT validation",
+        "equipment": ["PLC array (Siemens S7-1500)", "SCADA system (WinCC)", "industrial sensor suite", "5G private network node", "LoRaWAN gateway", "Zigbee mesh", "edge computing nodes"],
+        "access_conditions": "By agreement with NOI/UNIBZ TTO. Minimum 3-month engagement. NDA required. Dedicated slots allocated on request.",
+        "location": "NOI Techpark Bozen-Bolzano, Level B1, Bruno-Buozzi-Str. 1, 39100 Bozen-Bolzano, Italy",
+        "cost_model": "project-funded"
+      }
+    },
+
+    {
+      "_note": "OfferType: expertise | Status: draft | target: company — tests named-expert record with skills array",
+      "id": "{offer_010}",
+      "title": "Cybersecurity Research Expertise — Prof. Dominik Engel, UNIBZ",
+      "summary": "Prof. Dominik Engel is a professor at UNIBZ Faculty of Engineering specialising in cryptography, smart grid security, privacy-preserving technologies, and applied cryptographic protocols. Available for research collaboration, consulting engagements, joint project proposals (Horizon Europe, PRIN), and co-supervision of industry-funded doctoral projects. Active collaborations with energy utility companies and technology providers in the Alpine region.",
+      "link": "https://www.unibz.it/en/faculties/engineering/academic-staff/person/33513-dominik-engel",
+      "country": "IT",
+      "status": "draft",
+      "offer_type_id": "{ot_expertise}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_company}",
+      "domain_ids": ["{dom_cyber}", "{dom_digital}"],
+      "created_at": "2026-03-29T08:40:00Z",
+      "updated_at": "2026-03-29T08:40:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_ingestion_bot}",
+      "details": {
+        "expert_name": "Prof. Dominik Engel",
+        "skills": ["cryptography", "smart grid security", "privacy-preserving technologies", "applied cryptographic protocols", "energy system security"],
+        "domains": ["Cybersecurity", "Digitalisation"],
+        "availability": "consulting | joint project | supervision",
+        "contact_role": "research_group_lead"
+      }
+    },
+
+    {
+      "_note": "OfferType: service | Status: published | target: company — tests TTO professional service with subsidised cost model",
+      "id": "{offer_011}",
+      "title": "Patent Licensing and IP Management Services — UNIBZ Technology Transfer Office",
+      "summary": "The UNIBZ Technology Transfer Office (TTO) provides professional intellectual property management services to companies seeking to commercialise or protect innovations. Services include patent search and analysis, freedom-to-operate assessments, patent application support, licensing negotiation, and spin-off mentoring. Primarily targeted at SMEs in the South Tyrol and Trentino-Alto Adige region.",
+      "link": "https://www.unibz.it/en/research/transfer/",
+      "country": "IT",
+      "status": "published",
+      "offer_type_id": "{ot_service}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_company}",
+      "domain_ids": ["{dom_tt}", "{dom_innov}"],
+      "created_at": "2026-03-29T08:45:00Z",
+      "updated_at": "2026-03-29T09:45:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_admin_unibz}",
+      "details": {
+        "service_type": "IP_management",
+        "duration": "ongoing",
+        "deliverable": "Patent analysis report, freedom-to-operate assessment, licensing agreement, spin-off support package",
+        "eligibility": "SMEs registered in South Tyrol or Trentino-Alto Adige; national companies on request",
+        "cost_model": "subsidised"
+      }
+    },
+
+    {
+      "_note": "OfferType: co_creation | Status: draft | target: company — tests joint-output co-design with hybrid mode",
+      "id": "{offer_012}",
+      "title": "Innovation Co-Creation Programme — UNIBZ x Industry Partners",
+      "summary": "UNIBZ supports the co-creation of new ventures and products through a structured programme combining academic expertise with entrepreneurial coaching. University researchers and company partners jointly develop innovation projects that can lead to spin-off companies, joint ventures, or licensed products. The programme provides mentor access, legal support for company formation, use of NOI Techpark facilities, and introduction to regional venture capital networks.",
+      "link": "https://www.unibz.it/en/research/transfer/spinoff/",
+      "country": "IT",
+      "status": "draft",
+      "offer_type_id": "{ot_co_creation}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_company}",
+      "domain_ids": ["{dom_cocreation}", "{dom_innov}"],
+      "created_at": "2026-03-29T08:50:00Z",
+      "updated_at": "2026-03-29T08:50:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_ingestion_bot}",
+      "details": {
+        "mode": "hybrid",
+        "topic": "Joint innovation leading to spin-off or licensed technology. Topic defined collaboratively with company partner at programme intake.",
+        "expected_output": "spin-off",
+        "partner_type_sought": "SME | startup",
+        "duration": "12 months"
+      }
+    },
+
+    {
+      "_note": "OfferType: research_group | Status: published | org: MDU — tests group profile with current_projects and open_positions",
+      "id": "{offer_013}",
+      "title": "Future Autonomous Systems Research Specialisation — Mälardalen University",
+      "summary": "The Future Autonomous Systems (FAS) research specialisation at MDU is one of Sweden's leading research environments for autonomous and embedded systems. The group focuses on real-time operating systems, self-driving vehicles, industrial robots, AI safety, and formal verification. FAS collaborates with Volvo, ABB, RISE Research Institutes of Sweden, and SME partners. Companies and researchers can engage for collaborative research, industry-funded PhDs, and testbed access.",
+      "link": "https://www.mdu.se/en/malardalen-university/research/research-specialisations/future-autonomous-systems",
+      "country": "SE",
+      "status": "published",
+      "offer_type_id": "{ot_research_group}",
+      "organization_id": "{mdu}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_researcher}",
+      "domain_ids": ["{dom_robotics}", "{dom_ai}"],
+      "created_at": "2026-03-29T09:00:00Z",
+      "updated_at": "2026-03-29T10:00:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_admin_mdu}",
+      "details": {
+        "research_areas": ["real-time operating systems", "autonomous vehicles", "industrial robotics", "AI safety", "formal verification"],
+        "current_projects": ["SUNRISE", "VINNOVA AutoDrive", "Horizon Europe ECSEL"],
+        "open_positions": 3,
+        "funding_sources": ["Vinnova", "Horizon Europe", "RISE Sweden", "industry contracts"],
+        "website": "https://www.mdu.se/en/malardalen-university/research/research-specialisations/future-autonomous-systems"
+      }
+    },
+
+    {
+      "_note": "OfferType: funding_partner | Status: draft | org: MDU | target: company — tests doctoral co-funding offer",
+      "id": "{offer_014}",
+      "title": "DIN Doctoral Industrial Network — MDU Industry PhD Programme",
+      "summary": "The DIN (Doctoral Industrial Network) programme at MDU enables companies to co-fund a doctoral position in collaboration with MDU research groups. The company co-funds the doctoral salary while the PhD student splits time between university and the company. DIN positions are typically 4 years and lead to a full PhD degree. Well-suited to companies in automation, embedded systems, and software-intensive product development.",
+      "link": "https://www.mdu.se/en/malardalen-university/research/industrial-research-schools/din",
+      "country": "SE",
+      "status": "draft",
+      "offer_type_id": "{ot_funding_partner}",
+      "organization_id": "{mdu}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_company}",
+      "domain_ids": ["{dom_industry}", "{dom_innov}"],
+      "created_at": "2026-03-29T09:05:00Z",
+      "updated_at": "2026-03-29T09:05:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_ingestion_bot}",
+      "details": {
+        "funding_type": "doctoral_programme",
+        "amount_range": "Company contribution: EUR 20,000–40,000/year (co-funded with MDU)",
+        "deadline": null,
+        "eligibility": "Companies with active R&D; PhD candidate must hold a Master degree in a relevant field",
+        "programme_name": "DIN Doctoral Industrial Network"
+      }
+    },
+
+    {
+      "_note": "OfferType: project_opportunity | Status: draft | source: manual — tests open call for partners on a named research project",
+      "id": "{offer_015}",
+      "title": "Smart and Sustainable Cities — Open Partnership Call (Horizon Europe CL5)",
+      "summary": "UNIBZ Faculty of Engineering is seeking SME and company partners to join a Horizon Europe Cluster 5 (Climate, Energy, Mobility) proposal being prepared for submission in Q3 2026. The project aims to develop data-driven energy management solutions for smart city infrastructure in the Alpine region. Partner contributions can include pilot site access, industrial use cases, data sharing, or co-development of IoT sensing platforms. No prior relationship with UNIBZ is required.",
+      "link": "https://www.unibz.it/en/faculties/engineering/research/projects/",
+      "country": "IT",
+      "status": "draft",
+      "offer_type_id": "{ot_project_opportunity}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_manual}",
+      "target_profile_id": "{tp_company}",
+      "domain_ids": ["{dom_digital}", "{dom_sustain}", "{dom_regional}"],
+      "created_at": "2026-03-29T09:10:00Z",
+      "updated_at": "2026-03-29T09:10:00Z",
+      "created_by": "{user_admin_unibz}",
+      "updated_by": "{user_admin_unibz}",
+      "details": {
+        "project_type": "research",
+        "duration": "36 months",
+        "partners_sought": "SME or city authority with smart city pilot site in Alpine region; IoT platform providers welcome",
+        "funding_available": true,
+        "call_deadline": "2026-09-15",
+        "funding_programme": "Horizon Europe CL5 — Climate, Energy, Mobility"
+      }
+    },
+
+    {
+      "_note": "OfferType: hackathon | Status: draft | source: manual — tests 48h event with prize and theme fields",
+      "id": "{offer_016}",
+      "title": "SUNRISE AI & Sustainability Hackathon 2026",
+      "summary": "The SUNRISE network hosts a 48-hour hackathon bringing together students from all 9 partner universities to develop AI-powered solutions addressing sustainability challenges in the Alpine and Baltic Sea regions. Teams of 3–5 participants compete on a shared problem statement released at the opening. First prize: EUR 5,000 + 3-month mentorship. All travel and accommodation costs are covered for selected participants. Registration opens May 2026.",
+      "link": "https://www.unibz.it/en/events/sunrise-hackathon-2026/",
+      "country": "IT",
+      "status": "draft",
+      "offer_type_id": "{ot_hackathon}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_manual}",
+      "target_profile_id": "{tp_student}",
+      "domain_ids": ["{dom_ai}", "{dom_sustain}"],
+      "created_at": "2026-03-29T09:15:00Z",
+      "updated_at": "2026-03-29T09:15:00Z",
+      "created_by": "{user_admin_unibz}",
+      "updated_by": "{user_admin_unibz}",
+      "details": {
+        "event_date": "2026-10-09",
+        "duration": "48 hours",
+        "location": "NOI Techpark Bozen-Bolzano, Italy",
+        "prize": "EUR 5,000 + 3-month mentorship with SUNRISE industry partner",
+        "eligibility": "Students enrolled at any of the 9 SUNRISE partner universities",
+        "theme": "AI solutions for Alpine and Baltic Sea regional sustainability",
+        "registration_deadline": "2026-09-30"
+      }
+    },
+
+    {
+      "_note": "OfferType: challenge | Status: draft | source: manual — tests competition with problem_statement and submission_format",
+      "id": "{offer_017}",
+      "title": "UNIBZ Regional Sustainability Challenge 2026",
+      "summary": "The UNIBZ Faculty of Science and Technology, in partnership with the Autonomous Province of Bolzano, invites student teams to propose innovative solutions to sustainability challenges in the South Tyrol region. Teams of 2–4 submit a project report and a 5-minute video pitch. The jury panel includes academic experts, provincial officials, and industry sponsors. Top prize: EUR 3,000. Finalists present at the UNIBZ Annual Research Symposium. Open to students enrolled at any Italian university.",
+      "link": "https://www.unibz.it/en/faculties/sciencetechnology/sustainability-challenge-2026/",
+      "country": "IT",
+      "status": "draft",
+      "offer_type_id": "{ot_challenge}",
+      "organization_id": "{unibz}",
+      "source_type_id": "{st_manual}",
+      "target_profile_id": "{tp_student}",
+      "domain_ids": ["{dom_sustain}", "{dom_regional}"],
+      "created_at": "2026-03-29T09:20:00Z",
+      "updated_at": "2026-03-29T09:20:00Z",
+      "created_by": "{user_admin_unibz}",
+      "updated_by": "{user_admin_unibz}",
+      "details": {
+        "deadline": "2026-09-01",
+        "prize": "EUR 3,000 (1st) | EUR 1,500 (2nd) | EUR 500 (3rd)",
+        "eligibility": "Student teams of 2–4; enrolled at any Italian university",
+        "problem_statement": "Innovative solution to a sustainability challenge in the South Tyrol/Alpine region. Full problem statement released at challenge launch.",
+        "submission_format": "report | video pitch",
+        "organizer": "UNIBZ Faculty of Science and Technology + Autonomous Province of Bolzano"
+      }
+    },
+
+    {
+      "_note": "OfferType: training | Level: executive | Status: archived | org: MDU — tests the archived lifecycle status and short_course level",
+      "id": "{offer_018}",
+      "title": "Executive Training in AI for Industry — Mälardalen University (2024 edition)",
+      "summary": "This listing has been archived. The 2024 edition of the MDU Executive Training in AI for Industry has concluded. A new edition is expected in late 2026 — contact MDU directly for details. The programme was a 10-week intensive short course for industry professionals seeking practical knowledge of machine learning, AI model deployment, and AI ethics for manufacturing and embedded systems contexts. Delivered in blended format (on-campus + online).",
+      "link": "https://www.mdu.se/en/malardalen-university/education/courses/executive-ai",
+      "country": "SE",
+      "status": "archived",
+      "offer_type_id": "{ot_training}",
+      "organization_id": "{mdu}",
+      "source_type_id": "{st_scraping}",
+      "target_profile_id": "{tp_company}",
+      "domain_ids": ["{dom_ai}", "{dom_industry}"],
+      "created_at": "2025-01-10T08:00:00Z",
+      "updated_at": "2026-01-15T08:00:00Z",
+      "created_by": "{user_ingestion_bot}",
+      "updated_by": "{user_admin_mdu}",
+      "details": {
+        "ects": null,
+        "duration": "10 weeks",
+        "format": "blended",
+        "level": "executive",
+        "certification": null,
+        "application_deadline_early": null,
+        "start_date": null,
+        "places_eu": 25,
+        "places_non_eu": null,
+        "tuition_eur_per_year": 4500,
+        "location": "Mälardalen University, Västerås, Sweden (+ online sessions)",
+        "language": "en"
+      }
+    }
+
+  ]
+}
