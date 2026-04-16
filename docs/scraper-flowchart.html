@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OneStopShop Scraper Flowchart</title>
+  <style>
+    :root {
+      --bg: #f7f8f5;
+      --panel: #ffffff;
+      --ink: #1f2a2a;
+      --muted: #5a6969;
+      --accent: #0f766e;
+      --accent-soft: #d6f0ec;
+      --border: #d7e0de;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at 0 0, #eef5ee 0%, var(--bg) 55%);
+      color: var(--ink);
+    }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(31, 42, 42, 0.07);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      color: #0c4a45;
+      font-size: 1.8rem;
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .meta {
+      margin-top: 8px;
+      font-size: 0.92rem;
+      color: #45615f;
+    }
+
+    .chart-wrap {
+      margin-top: 18px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #fbfcfb 0%, #f4f8f7 100%);
+      padding: 10px;
+    }
+
+    .mermaid {
+      margin: 0;
+      min-width: 880px;
+    }
+
+    .mermaid svg {
+      height: auto;
+    }
+
+    .legend {
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px dashed #bdd5d2;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: #134e4a;
+      font-size: 0.95rem;
+    }
+
+    code {
+      background: rgba(15, 118, 110, 0.08);
+      padding: 2px 6px;
+      border-radius: 6px;
+      color: #0f5e57;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="card">
+      <h1>OneStopShop Scraper Workflow</h1>
+      <p>
+        Flowchart of how the scraper runs, processes each source, handles errors, and cleans invalid links.
+      </p>
+      <p class="meta">Based on current logic in content/scrapers/service.py</p>
+
+      <div class="chart-wrap">
+        <pre class="mermaid">
+    flowchart TD
+      A(["Start scrape cycle"]) --> B["Init ScrapeService"]
+      B --> C["Load source list"]
+      C --> D{"Sources found?"}
+      D -- "No" --> E(["Return empty summary"])
+      D -- "Yes" --> F["Load scraping type + bot user"]
+
+      F --> G["For each source"]
+      G --> H["Sync job + create RUNNING run"]
+
+      H --> I["Process source"]
+      I --> I1["Fetch HTML (timeout + UA)"]
+      I1 --> I2["Deterministic extraction"]
+      I2 --> I3{"Confidence low or missing fields?"}
+      I3 -- "Yes" --> I4["Run Ollama fallback"]
+      I4 --> I5["Pick better payload"]
+      I3 -- "No" --> I5
+      I5 --> I6["Upsert offer + refresh scraping metadata"]
+
+      I6 --> J["Run SUCCESS + counters + log"]
+      I --> K{"Exception raised?"}
+      K -- "Yes" --> L["Run FAILED + error log"]
+      L --> M{"HTTP status 404 or 410?"}
+      M -- "Yes" --> N["Delete offers for invalid source"]
+      M -- "No" --> O["Keep failed run record"]
+      N --> O
+      J --> P["Finalize run + update next_run_at"]
+      O --> P
+      P --> Q{"More sources?"}
+      Q -- "Yes" --> G
+      Q -- "No" --> R["Flag stale candidates (successful sources only)"]
+
+      R --> S["Cleanup broken links for scraping offers<br/>skip links fetched successfully in this cycle"]
+      S --> T(["Return summary stats"])
+
+      classDef start fill:#d8f5e8,stroke:#0f766e,stroke-width:1.5px,color:#134e4a;
+      classDef process fill:#e8f0ff,stroke:#2563eb,stroke-width:1px,color:#1e3a8a;
+      classDef decision fill:#fff7db,stroke:#b45309,stroke-width:1px,color:#7c2d12;
+      classDef fail fill:#fee2e2,stroke:#b91c1c,stroke-width:1px,color:#7f1d1d;
+
+      class A,E,T start;
+      class B,C,F,G,H,I,I1,I2,I4,I5,I6,J,N,O,P,R,S process;
+      class D,I3,K,M,Q decision;
+      class L fail;
+        </pre>
+      </div>
+
+      <div class="legend">
+        <strong>Legend:</strong> green = start/end, blue = processing, yellow = decisions, red = failure path.
+        The cleanup step ensures offers with broken links (HTTP <code>404</code>/<code>410</code>) are removed.
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      themeVariables: {
+        primaryTextColor: "#1f2a2a",
+        lineColor: "#4b6b69",
+        fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
+        fontSize: "13px"
+      },
+      flowchart: {
+        curve: "basis",
+        nodeSpacing: 28,
+        rankSpacing: 36,
+        useMaxWidth: true,
+        htmlLabels: true
+      }
+    });
+  </script>
+</body>
+</html>
