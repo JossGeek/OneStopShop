@@ -104,6 +104,22 @@ class ReadApiTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertGreaterEqual(payload["count"], 1)
 
+	def test_organizations_endpoint(self):
+		response = self.client.get("/api/lookups/organizations")
+		payload = response.json()
+		self.assertEqual(response.status_code, 200)
+		self.assertGreaterEqual(payload["count"], 2)
+		names = [row["name"] for row in payload["results"]]
+		self.assertIn("Test University", names)
+
+	def test_countries_endpoint(self):
+		response = self.client.get("/api/lookups/countries")
+		payload = response.json()
+		self.assertEqual(response.status_code, 200)
+		codes = [row["code"] for row in payload["results"]]
+		self.assertIn("IT", codes)
+		self.assertIn("SE", codes)
+
 	def test_offers_list_endpoint(self):
 		response = self.client.get("/api/offers", {"page_size": 1})
 		payload = response.json()

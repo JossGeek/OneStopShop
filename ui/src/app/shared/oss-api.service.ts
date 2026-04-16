@@ -2,10 +2,12 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
+  CountryLookup,
   DomainLookup,
   LookupResponse,
   OfferListResponse,
   OfferQueryParams,
+  OrganizationLookup,
   OfferTypeLookup,
   ScrapingRunDetail,
   ScrapingRunListResponse,
@@ -25,6 +27,14 @@ export class OssApiService {
 
   getDomains(): Observable<LookupResponse<DomainLookup>> {
     return this.http.get<LookupResponse<DomainLookup>>(`${this.apiBaseUrl}/lookups/domains`);
+  }
+
+  getOrganizations(): Observable<LookupResponse<OrganizationLookup>> {
+    return this.http.get<LookupResponse<OrganizationLookup>>(`${this.apiBaseUrl}/lookups/organizations`);
+  }
+
+  getCountries(): Observable<LookupResponse<CountryLookup>> {
+    return this.http.get<LookupResponse<CountryLookup>>(`${this.apiBaseUrl}/lookups/countries`);
   }
 
   getOffers(query: OfferQueryParams): Observable<OfferListResponse> {

@@ -9,6 +9,17 @@ export interface DomainLookup {
   name: string;
 }
 
+export interface OrganizationLookup {
+  id: string;
+  name: string;
+  type: string;
+  country: string;
+}
+
+export interface CountryLookup {
+  code: string;
+}
+
 export interface OrganizationSummary {
   id: string;
   name: string;

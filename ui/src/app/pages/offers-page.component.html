@@ -24,7 +24,10 @@
 
     <label>
       Organization
-      <input type="text" name="organization" [(ngModel)]="organization" placeholder="contains text" />
+      <select name="organization" [(ngModel)]="organization">
+        <option value="">All</option>
+        <option *ngFor="let item of organizations" [value]="item.name">{{ item.name }}</option>
+      </select>
     </label>
 
     <label>
@@ -53,7 +56,10 @@
 
     <label>
       Country
-      <input type="text" name="country" [(ngModel)]="country" maxlength="2" placeholder="IT, SE" />
+      <select name="country" [(ngModel)]="country">
+        <option value="">All</option>
+        <option *ngFor="let item of countries" [value]="item.code">{{ item.code }}</option>
+      </select>
     </label>
 
     <label>

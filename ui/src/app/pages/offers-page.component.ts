@@ -4,10 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, forkJoin, takeUntil } from 'rxjs';
 import {
+  CountryLookup,
   DomainLookup,
   Offer,
   OfferQueryParams,
   OfferTypeLookup,
+  OrganizationLookup,
 } from '../shared/api.models';
 import { OssApiService } from '../shared/oss-api.service';
 
@@ -25,6 +27,8 @@ export class OffersPageComponent implements OnInit, OnDestroy {
 
   offerTypes: OfferTypeLookup[] = [];
   domains: DomainLookup[] = [];
+  organizations: OrganizationLookup[] = [];
+  countries: CountryLookup[] = [];
   offers: Offer[] = [];
 
   q = '';
@@ -204,12 +208,16 @@ export class OffersPageComponent implements OnInit, OnDestroy {
     forkJoin({
       offerTypes: this.api.getOfferTypes(),
       domains: this.api.getDomains(),
+      organizations: this.api.getOrganizations(),
+      countries: this.api.getCountries(),
     })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: ({ offerTypes, domains }) => {
+        next: ({ offerTypes, domains, organizations, countries }) => {
           this.offerTypes = offerTypes.results;
           this.domains = domains.results;
+          this.organizations = organizations.results;
+          this.countries = countries.results;
           this.loadingLookups = false;
         },
         error: () => {

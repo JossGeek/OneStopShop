@@ -110,16 +110,22 @@
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
+  align-items: flex-start;
 }
 
 .pill {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   padding: 0.2rem 0.5rem;
   border-radius: 999px;
   background: #dff2ff;
   color: #0f5e9c;
   font-size: 0.75rem;
+  line-height: 1;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .pill.muted {
@@ -148,15 +154,23 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+  align-items: flex-start;
 }
 
 .domains span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   border: 1px solid #cfe3d6;
   border-radius: 999px;
-  padding: 0.2rem 0.5rem;
+  padding: 0.24rem 0.55rem;
   background: #f1fbf4;
   color: #216a42;
   font-size: 0.75rem;
+  line-height: 1;
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 .offer-card a {

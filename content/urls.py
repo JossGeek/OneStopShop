@@ -11,6 +11,8 @@ urlpatterns = [
     path("scraping/runs/<str:run_id>", views.scraping_run_detail, name="scraping-run-detail"),
     path("lookups/offer-types", views.offer_types, name="offer-types"),
     path("lookups/domains", views.domains, name="domains"),
+    path("lookups/organizations", views.organizations, name="organizations"),
+    path("lookups/countries", views.countries, name="countries"),
     path("offers", views.offers, name="offers"),
     path("offers/<str:offer_id>", views.offer_detail, name="offer-detail"),
 ]

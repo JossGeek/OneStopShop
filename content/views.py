@@ -7,7 +7,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET
 
-from content.models import Domain, Offer, OfferType, ScrapingRun
+from content.models import Domain, Offer, OfferType, Organization, ScrapingRun
 
 
 def _parse_positive_int(value: str | None, default: int, max_value: int) -> int:
@@ -95,6 +95,36 @@ def _openapi_spec() -> dict:
 							"content": {
 								"application/json": {
 									"schema": {"$ref": "#/components/schemas/DomainLookupResponse"}
+								}
+							},
+						}
+					},
+				}
+			},
+			"/api/lookups/organizations": {
+				"get": {
+					"summary": "List organizations",
+					"responses": {
+						"200": {
+							"description": "Organization lookup entries",
+							"content": {
+								"application/json": {
+									"schema": {"$ref": "#/components/schemas/OrganizationLookupResponse"}
+								}
+							},
+						}
+					},
+				}
+			},
+			"/api/lookups/countries": {
+				"get": {
+					"summary": "List countries used by offers",
+					"responses": {
+						"200": {
+							"description": "Country lookup entries",
+							"content": {
+								"application/json": {
+									"schema": {"$ref": "#/components/schemas/CountryLookupResponse"}
 								}
 							},
 						}
@@ -240,6 +270,39 @@ def _openapi_spec() -> dict:
 					},
 					"required": ["count", "results"],
 				},
+				"OrganizationLookup": {
+					"type": "object",
+					"properties": {
+						"id": {"type": "string", "format": "uuid"},
+						"name": {"type": "string"},
+						"type": {"type": "string"},
+						"country": {"type": "string"},
+					},
+					"required": ["id", "name", "type", "country"],
+				},
+				"OrganizationLookupResponse": {
+					"type": "object",
+					"properties": {
+						"count": {"type": "integer"},
+						"results": {"type": "array", "items": {"$ref": "#/components/schemas/OrganizationLookup"}},
+					},
+					"required": ["count", "results"],
+				},
+				"CountryLookup": {
+					"type": "object",
+					"properties": {
+						"code": {"type": "string"},
+					},
+					"required": ["code"],
+				},
+				"CountryLookupResponse": {
+					"type": "object",
+					"properties": {
+						"count": {"type": "integer"},
+						"results": {"type": "array", "items": {"$ref": "#/components/schemas/CountryLookup"}},
+					},
+					"required": ["count", "results"],
+				},
 				"OrganizationSummary": {
 					"type": "object",
 					"properties": {
@@ -370,6 +433,27 @@ def domains(request):
 	data = list(Domain.objects.order_by("name").values("id", "name"))
 	for row in data:
 		row["id"] = str(row["id"])
+	return JsonResponse({"count": len(data), "results": data})
+
+
+@require_GET
+def organizations(request):
+	data = list(
+		Organization.objects.order_by("name").values("id", "name", "type", "country")
+	)
+	for row in data:
+		row["id"] = str(row["id"])
+	return JsonResponse({"count": len(data), "results": data})
+
+
+@require_GET
+def countries(request):
+	rows = list(
+		Offer.objects.order_by("country")
+		.values_list("country", flat=True)
+		.distinct()
+	)
+	data = [{"code": code} for code in rows if code]
 	return JsonResponse({"count": len(data), "results": data})
 
 
