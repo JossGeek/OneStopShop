@@ -6,7 +6,7 @@
             <h1>Find your next <em>academic opportunity</em></h1>
             <p class="hero-sub">Master theses, internships, jobs, and courses from six leading universities — all in one place. Discover, explore, and apply directly through each institution.</p>
             <div class="hero-actions">
-            <a class="btn-primary" href="#opportunities">Browse opportunities</a>
+            <a class="btn-primary" href="#Opportunities">Browse opportunities</a>
             <a class="btn-ghost" href="#about">Learn more</a>
         </div>
     </div>
