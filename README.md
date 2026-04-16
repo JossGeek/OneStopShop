@@ -127,7 +127,7 @@ All endpoints are read-only (`GET`):
 
 ## Angular Demo UI
 
-An Angular frontend is included in `ui/` with two routes:
+An Angular frontend is included in `backend/ui/` with two routes:
 
 - `http://localhost:4200/offers` - offer explorer with search, filters, cards, and classic pagination
 - `http://localhost:4200/admin/scrapper` - read-only scraper run tracking page
@@ -135,7 +135,7 @@ An Angular frontend is included in `ui/` with two routes:
 Start the UI:
 
 ```powershell
-cd ui
+cd backend/ui
 npm install
 npm start
 ```
@@ -143,7 +143,7 @@ npm start
 Build the UI:
 
 ```powershell
-cd ui
+cd backend/ui
 npm run build
 ```
 
