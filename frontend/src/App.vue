@@ -1,7 +1,7 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import OneStopShop from './OneStopShop.vue';
 </script>
 
 <template>
-  <HelloWorld />
+  <OneStopShop />
 </template>
