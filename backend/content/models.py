@@ -100,6 +100,7 @@ class User(TimeStampedModel):
 	username = models.CharField(max_length=150, unique=True)
 	email = models.EmailField(unique=True)
 	password_hash = models.CharField(max_length=255)
+	is_active = models.BooleanField(default=True)
 
 	class Meta:
 		db_table = "oss_user"

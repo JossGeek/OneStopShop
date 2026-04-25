@@ -18,7 +18,9 @@ from content.models import (
 	UserFavorite,
 	UserNeed,
 	UserNeedDomain,
+	UserOrganization,
 	UserProfile,
+	UserRole,
 )
 
 
@@ -492,3 +494,205 @@ class UserDashboardModelTests(TestCase):
 		hit.full_clean()
 
 		self.assertEqual(str(hit.match_score), "0.5000")
+
+
+class UserCrudApiTests(TestCase):
+	@classmethod
+	def setUpTestData(cls):
+		cls.organization = Organization.objects.create(
+			name="Stage Two Org",
+			type=Organization.OrganizationType.UNIVERSITY,
+			country="IT",
+			website="https://stage-two.example",
+		)
+		cls.other_organization = Organization.objects.create(
+			name="Second Org",
+			type=Organization.OrganizationType.COMPANY,
+			country="FR",
+			website="https://second.example",
+		)
+		cls.member_role = UserRole.objects.create(
+			name="member",
+			description="Default member role",
+		)
+		cls.user = User.objects.create(
+			username="stage2user",
+			email="stage2@example.com",
+			password_hash="secret",
+		)
+		cls.other_user = User.objects.create(
+			username="otherstage2",
+			email="otherstage2@example.com",
+			password_hash="secret",
+		)
+		UserProfile.objects.create(
+			user=cls.user,
+			bio="Initial bio",
+			preferred_domains=["AI"],
+			preferred_countries=["IT"],
+		)
+
+	def test_upsert_user_creates_user_profile_and_org_link(self):
+		response = self.client.post(
+			"/api/users",
+			data={
+				"email": "new.user@example.com",
+				"username": "newuser",
+				"organization_id": str(self.organization.id),
+				"profile": {
+					"bio": "Created from stage 2",
+					"preferred_domains": ["Data"],
+					"preferred_countries": ["DE"],
+					"notification_enabled": False,
+				},
+			},
+			content_type="application/json",
+		)
+
+		payload = response.json()
+		self.assertEqual(response.status_code, 201)
+		self.assertTrue(payload["is_new"])
+		self.assertEqual(payload["profile"]["bio"], "Created from stage 2")
+		self.assertEqual(payload["organizations"][0]["name"], "Stage Two Org")
+		self.assertTrue(User.objects.filter(email="new.user@example.com").exists())
+
+	def test_upsert_user_updates_existing_user_and_reactivates(self):
+		self.user.is_active = False
+		self.user.save(update_fields=["is_active"])
+
+		response = self.client.post(
+			"/api/users",
+			data={"email": self.user.email, "username": "renamed-user"},
+			content_type="application/json",
+		)
+
+		payload = response.json()
+		self.assertEqual(response.status_code, 200)
+		self.assertFalse(payload["is_new"])
+		self.user.refresh_from_db()
+		self.assertEqual(self.user.username, "renamed-user")
+		self.assertTrue(self.user.is_active)
+
+	def test_upsert_user_requires_email_and_username(self):
+		response = self.client.post(
+			"/api/users",
+			data={"email": "", "username": ""},
+			content_type="application/json",
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertEqual(response.json()["error"], "validation_error")
+
+	def test_get_user_detail_returns_profile_and_organizations(self):
+		UserOrganization.objects.create(
+			user=self.user,
+			organization=self.organization,
+			role=self.member_role,
+		)
+
+		response = self.client.get(f"/api/users/{self.user.id}")
+		payload = response.json()
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(payload["email"], "stage2@example.com")
+		self.assertEqual(payload["profile"]["bio"], "Initial bio")
+		self.assertEqual(payload["organizations"][0]["role"], "member")
+
+	def test_get_user_detail_invalid_uuid(self):
+		response = self.client.get("/api/users/not-a-uuid")
+		self.assertEqual(response.status_code, 400)
+
+	def test_get_user_detail_not_found(self):
+		response = self.client.get(f"/api/users/{uuid.uuid4()}")
+		self.assertEqual(response.status_code, 404)
+
+	def test_patch_user_updates_account_and_profile(self):
+		response = self.client.patch(
+			f"/api/users/{self.user.id}",
+			data={
+				"username": "patched-user",
+				"profile": {
+					"bio": "Updated bio",
+					"preferred_domains": ["AI", "ML"],
+					"notification_enabled": False,
+				},
+			},
+			content_type="application/json",
+		)
+
+		payload = response.json()
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(payload["username"], "patched-user")
+		self.assertEqual(payload["profile"]["bio"], "Updated bio")
+		self.assertFalse(payload["profile"]["notification_enabled"])
+
+	def test_patch_user_rejects_duplicate_email(self):
+		response = self.client.patch(
+			f"/api/users/{self.user.id}",
+			data={"email": self.other_user.email},
+			content_type="application/json",
+		)
+
+		self.assertEqual(response.status_code, 409)
+		self.assertEqual(response.json()["error"], "conflict")
+
+	def test_delete_user_soft_deletes_account(self):
+		response = self.client.delete(f"/api/users/{self.user.id}")
+
+		self.assertEqual(response.status_code, 204)
+		self.user.refresh_from_db()
+		self.assertFalse(self.user.is_active)
+
+	def test_link_user_organization_creates_link(self):
+		response = self.client.post(
+			f"/api/users/{self.user.id}/organizations",
+			data={"organization_id": str(self.organization.id), "role": "contributor"},
+			content_type="application/json",
+		)
+
+		payload = response.json()
+		self.assertEqual(response.status_code, 201)
+		self.assertEqual(payload["name"], "Stage Two Org")
+		self.assertEqual(payload["role"], "contributor")
+
+	def test_link_user_organization_rejects_duplicate_org(self):
+		UserOrganization.objects.create(
+			user=self.user,
+			organization=self.organization,
+			role=self.member_role,
+		)
+
+		response = self.client.post(
+			f"/api/users/{self.user.id}/organizations",
+			data={"organization_id": str(self.organization.id)},
+			content_type="application/json",
+		)
+
+		self.assertEqual(response.status_code, 409)
+		self.assertEqual(response.json()["error"], "conflict")
+
+	def test_unlink_user_organization_removes_link(self):
+		UserOrganization.objects.create(
+			user=self.user,
+			organization=self.organization,
+			role=self.member_role,
+		)
+
+		response = self.client.delete(
+			f"/api/users/{self.user.id}/organizations/{self.organization.id}"
+		)
+
+		self.assertEqual(response.status_code, 204)
+		self.assertFalse(
+			UserOrganization.objects.filter(
+				user=self.user,
+				organization=self.organization,
+			).exists()
+		)
+
+	def test_unlink_user_organization_returns_not_found_for_missing_link(self):
+		response = self.client.delete(
+			f"/api/users/{self.user.id}/organizations/{self.other_organization.id}"
+		)
+
+		self.assertEqual(response.status_code, 404)

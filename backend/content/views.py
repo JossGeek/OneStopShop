@@ -1,13 +1,25 @@
+import json
 from math import ceil
 from uuid import UUID
 
+from django.db import IntegrityError
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_http_methods
 
-from content.models import Domain, Offer, OfferType, Organization, ScrapingRun
+from content.models import (
+	Domain,
+	Offer,
+	OfferType,
+	Organization,
+	ScrapingRun,
+	User,
+	UserOrganization,
+	UserProfile,
+	UserRole,
+)
 
 
 def _parse_positive_int(value: str | None, default: int, max_value: int) -> int:
@@ -44,6 +56,106 @@ def _offer_to_dict(offer: Offer) -> dict:
 		"created_at": offer.created_at.isoformat(),
 		"updated_at": offer.updated_at.isoformat(),
 	}
+
+
+def _error_response(message: str, *, status: int, error: str | None = None, details: dict | None = None) -> JsonResponse:
+	payload = {"message": message}
+	if error:
+		payload["error"] = error
+	if details:
+		payload["details"] = details
+	return JsonResponse(payload, status=status)
+
+
+def _parse_json_body(request) -> dict | None:
+	if not request.body:
+		return {}
+	try:
+		return json.loads(request.body)
+	except json.JSONDecodeError:
+		return None
+
+
+def _parse_uuid_or_none(raw_value: str | None) -> UUID | None:
+	if raw_value is None:
+		return None
+	try:
+		return UUID(raw_value)
+	except ValueError:
+		return None
+
+
+def _get_user_or_error(user_id: str) -> tuple[User | None, JsonResponse | None]:
+	parsed_id = _parse_uuid_or_none(user_id)
+	if parsed_id is None:
+		return None, _error_response("Invalid user id.", status=400, error="validation_error")
+
+	user = User.objects.filter(id=parsed_id).first()
+	if user is None:
+		return None, _error_response("User not found.", status=404, error="not_found")
+
+	return user, None
+
+
+def _get_or_create_profile(user: User) -> UserProfile:
+	profile, _ = UserProfile.objects.get_or_create(user=user)
+	return profile
+
+
+def _profile_to_dict(profile: UserProfile) -> dict:
+	return {
+		"id": str(profile.id),
+		"user_id": str(profile.user_id),
+		"bio": profile.bio,
+		"avatar_url": profile.avatar_url,
+		"preferred_domains": profile.preferred_domains,
+		"preferred_countries": profile.preferred_countries,
+		"notification_enabled": profile.notification_enabled,
+		"created_at": profile.created_at.isoformat(),
+		"updated_at": profile.updated_at.isoformat(),
+	}
+
+
+def _organization_link_to_dict(link: UserOrganization) -> dict:
+	return {
+		"id": str(link.organization.id),
+		"name": link.organization.name,
+		"role": link.role.name,
+	}
+
+
+def _user_to_dict(user: User) -> dict:
+	profile = _get_or_create_profile(user)
+	organization_links = (
+		user.organization_links.select_related("organization", "role")
+		.order_by("organization__name", "role__name")
+	)
+	return {
+		"id": str(user.id),
+		"username": user.username,
+		"email": user.email,
+		"is_active": user.is_active,
+		"profile": _profile_to_dict(profile),
+		"organizations": [_organization_link_to_dict(link) for link in organization_links],
+		"created_at": user.created_at.isoformat(),
+		"updated_at": user.updated_at.isoformat(),
+	}
+
+
+def _apply_profile_updates(profile: UserProfile, profile_data: dict) -> None:
+	# Stage 2 keeps profile updates nested under the user payload so frontend forms
+	# can persist both account and profile state with one request.
+	if "bio" in profile_data:
+		profile.bio = profile_data["bio"] or ""
+	if "avatar_url" in profile_data:
+		profile.avatar_url = profile_data["avatar_url"] or None
+	if "preferred_domains" in profile_data and isinstance(profile_data["preferred_domains"], list):
+		profile.preferred_domains = profile_data["preferred_domains"]
+	if "preferred_countries" in profile_data and isinstance(profile_data["preferred_countries"], list):
+		profile.preferred_countries = profile_data["preferred_countries"]
+	if "notification_enabled" in profile_data:
+		profile.notification_enabled = bool(profile_data["notification_enabled"])
+	profile.save()
 
 
 def _build_stage_zero_paths() -> dict:
@@ -161,6 +273,100 @@ def _build_stage_zero_paths() -> dict:
 					},
 					"400": {
 						"description": "Validation error",
+						"content": {
+							"application/json": {
+								"schema": {"$ref": "#/components/schemas/ApiErrorResponse"}
+							}
+						},
+					},
+				},
+			},
+			"delete": {
+				"tags": ["Users"],
+				"summary": "Soft delete a user",
+				"parameters": [
+					{
+						"name": "user_id",
+						"in": "path",
+						"required": True,
+						"schema": {"type": "string", "format": "uuid"},
+					}
+				],
+				"responses": {
+					"204": {"description": "User marked inactive"},
+					"404": {
+						"description": "User not found",
+						"content": {
+							"application/json": {
+								"schema": {"$ref": "#/components/schemas/ApiErrorResponse"}
+							}
+						},
+					},
+				},
+			},
+		},
+		"/api/users/{user_id}/organizations": {
+			"post": {
+				"tags": ["Users"],
+				"summary": "Link a user to an organization",
+				"parameters": [
+					{
+						"name": "user_id",
+						"in": "path",
+						"required": True,
+						"schema": {"type": "string", "format": "uuid"},
+					}
+				],
+				"requestBody": {
+					"required": True,
+					"content": {
+						"application/json": {
+							"schema": {"$ref": "#/components/schemas/UserOrganizationLinkRequest"}
+						}
+					},
+				},
+				"responses": {
+					"201": {
+						"description": "Organization linked",
+						"content": {
+							"application/json": {
+								"schema": {"$ref": "#/components/schemas/UserOrganization"}
+							}
+						},
+					},
+					"409": {
+						"description": "Link already exists",
+						"content": {
+							"application/json": {
+								"schema": {"$ref": "#/components/schemas/ApiErrorResponse"}
+							}
+						},
+					},
+				},
+			}
+		},
+		"/api/users/{user_id}/organizations/{org_id}": {
+			"delete": {
+				"tags": ["Users"],
+				"summary": "Unlink a user from an organization",
+				"parameters": [
+					{
+						"name": "user_id",
+						"in": "path",
+						"required": True,
+						"schema": {"type": "string", "format": "uuid"},
+					},
+					{
+						"name": "org_id",
+						"in": "path",
+						"required": True,
+						"schema": {"type": "string", "format": "uuid"},
+					},
+				],
+				"responses": {
+					"204": {"description": "Organization unlinked"},
+					"404": {
+						"description": "Organization link not found",
 						"content": {
 							"application/json": {
 								"schema": {"$ref": "#/components/schemas/ApiErrorResponse"}
@@ -689,6 +895,16 @@ def _build_stage_zero_schemas() -> dict:
 				"preferred_countries", "notification_enabled", "created_at", "updated_at",
 			],
 		},
+		"UserProfileUpdate": {
+			"type": "object",
+			"properties": {
+				"bio": {"type": "string"},
+				"avatar_url": {"type": "string", "format": "uri", "nullable": True},
+				"preferred_domains": {"type": "array", "items": {"type": "string"}},
+				"preferred_countries": {"type": "array", "items": {"type": "string"}},
+				"notification_enabled": {"type": "boolean"},
+			},
+		},
 		"UserSummary": {
 			"type": "object",
 			"properties": {
@@ -723,6 +939,7 @@ def _build_stage_zero_schemas() -> dict:
 				"email": {"type": "string", "format": "email"},
 				"username": {"type": "string"},
 				"organization_id": {"type": "string", "format": "uuid", "nullable": True},
+				"profile": {"$ref": "#/components/schemas/UserProfileUpdate"},
 			},
 			"required": ["email", "username"],
 		},
@@ -731,7 +948,16 @@ def _build_stage_zero_schemas() -> dict:
 			"properties": {
 				"email": {"type": "string", "format": "email"},
 				"username": {"type": "string"},
+				"profile": {"$ref": "#/components/schemas/UserProfileUpdate"},
 			},
+		},
+		"UserOrganizationLinkRequest": {
+			"type": "object",
+			"properties": {
+				"organization_id": {"type": "string", "format": "uuid"},
+				"role": {"type": "string", "example": "member"},
+			},
+			"required": ["organization_id"],
 		},
 		"UserUpsertResponse": {
 			"allOf": [
@@ -1625,6 +1851,171 @@ def countries(request):
 	)
 	data = [{"code": code} for code in rows if code]
 	return JsonResponse({"count": len(data), "results": data})
+
+
+@require_http_methods(["POST"])
+def upsert_user(request):
+	data = _parse_json_body(request)
+	if data is None:
+		return _error_response("Request body must be valid JSON.", status=400, error="validation_error")
+
+	email = (data.get("email") or "").strip().lower()
+	username = (data.get("username") or "").strip()
+	if not email or not username:
+		return _error_response(
+			"Email and username are required.",
+			status=400,
+			error="validation_error",
+			details={
+				"email": ["This field is required."] if not email else [],
+				"username": ["This field is required."] if not username else [],
+			},
+		)
+
+	organization_id = data.get("organization_id")
+	organization = None
+	if organization_id:
+		parsed_org_id = _parse_uuid_or_none(organization_id)
+		if parsed_org_id is None:
+			return _error_response("organization_id must be a valid UUID.", status=400, error="validation_error")
+		organization = Organization.objects.filter(id=parsed_org_id).first()
+		if organization is None:
+			return _error_response("Organization not found.", status=404, error="not_found")
+
+	try:
+		user, created = User.objects.update_or_create(
+			email=email,
+			defaults={"username": username, "is_active": True},
+		)
+	except IntegrityError:
+		return _error_response("A user with those details already exists.", status=409, error="conflict")
+
+	profile = _get_or_create_profile(user)
+	if isinstance(data.get("profile"), dict):
+		_apply_profile_updates(profile, data["profile"])
+
+	if organization is not None:
+		role, _ = UserRole.objects.get_or_create(
+			name="member",
+			defaults={"description": "Default member role for Stage 2 organization links."},
+		)
+		UserOrganization.objects.get_or_create(user=user, organization=organization, role=role)
+
+	payload = _user_to_dict(User.objects.get(id=user.id))
+	payload["is_new"] = created
+	return JsonResponse(payload, status=201 if created else 200)
+
+
+@require_GET
+def user_detail(request, user_id: str):
+	user, error = _get_user_or_error(user_id)
+	if error:
+		return error
+	return JsonResponse(_user_to_dict(user))
+
+
+@require_http_methods(["PATCH"])
+def update_user(request, user_id: str):
+	user, error = _get_user_or_error(user_id)
+	if error:
+		return error
+
+	data = _parse_json_body(request)
+	if data is None:
+		return _error_response("Request body must be valid JSON.", status=400, error="validation_error")
+
+	if "email" in data:
+		email = (data.get("email") or "").strip().lower()
+		if not email:
+			return _error_response("Email cannot be empty.", status=400, error="validation_error")
+		user.email = email
+
+	if "username" in data:
+		username = (data.get("username") or "").strip()
+		if not username:
+			return _error_response("Username cannot be empty.", status=400, error="validation_error")
+		user.username = username
+
+	try:
+		user.save()
+	except IntegrityError:
+		return _error_response("A user with those details already exists.", status=409, error="conflict")
+
+	if isinstance(data.get("profile"), dict):
+		profile = _get_or_create_profile(user)
+		_apply_profile_updates(profile, data["profile"])
+
+	return JsonResponse(_user_to_dict(User.objects.get(id=user.id)))
+
+
+@require_http_methods(["DELETE"])
+def delete_user(request, user_id: str):
+	user, error = _get_user_or_error(user_id)
+	if error:
+		return error
+
+	if user.is_active:
+		user.is_active = False
+		user.save(update_fields=["is_active", "updated_at"])
+	return JsonResponse({}, status=204)
+
+
+@require_http_methods(["GET", "PATCH", "DELETE"])
+def user_resource(request, user_id: str):
+	if request.method == "GET":
+		return user_detail(request, user_id)
+	if request.method == "PATCH":
+		return update_user(request, user_id)
+	return delete_user(request, user_id)
+
+
+@require_http_methods(["POST"])
+def link_user_organization(request, user_id: str):
+	user, error = _get_user_or_error(user_id)
+	if error:
+		return error
+
+	data = _parse_json_body(request)
+	if data is None:
+		return _error_response("Request body must be valid JSON.", status=400, error="validation_error")
+
+	organization_id = data.get("organization_id")
+	parsed_org_id = _parse_uuid_or_none(organization_id)
+	if parsed_org_id is None:
+		return _error_response("organization_id is required and must be a valid UUID.", status=400, error="validation_error")
+
+	organization = Organization.objects.filter(id=parsed_org_id).first()
+	if organization is None:
+		return _error_response("Organization not found.", status=404, error="not_found")
+
+	if UserOrganization.objects.filter(user=user, organization=organization).exists():
+		return _error_response("User is already linked to this organization.", status=409, error="conflict")
+
+	role_name = (data.get("role") or "member").strip().lower() or "member"
+	role, _ = UserRole.objects.get_or_create(
+		name=role_name,
+		defaults={"description": f"Auto-created Stage 2 role: {role_name}."},
+	)
+	link = UserOrganization.objects.create(user=user, organization=organization, role=role)
+	return JsonResponse(_organization_link_to_dict(link), status=201)
+
+
+@require_http_methods(["DELETE"])
+def unlink_user_organization(request, user_id: str, org_id: str):
+	user, error = _get_user_or_error(user_id)
+	if error:
+		return error
+
+	parsed_org_id = _parse_uuid_or_none(org_id)
+	if parsed_org_id is None:
+		return _error_response("Invalid organization id.", status=400, error="validation_error")
+
+	links = UserOrganization.objects.filter(user=user, organization_id=parsed_org_id)
+	if not links.exists():
+		return _error_response("Organization link not found.", status=404, error="not_found")
+
+	links.delete()
+	return JsonResponse({}, status=204)
 
 
 @require_GET
