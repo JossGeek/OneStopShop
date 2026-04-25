@@ -134,3 +134,25 @@ export interface LlmStats {
   avg_confidence_llm: number | null;
   avg_confidence_deterministic: number | null;
 }
+
+export interface ImportValidRow {
+  row: number;
+  data: Record<string, string>;
+  warnings: string[];
+}
+
+export interface ImportInvalidRow {
+  row: number;
+  data: Record<string, string>;
+  errors: string[];
+}
+
+export interface PreviewResult {
+  valid: ImportValidRow[];
+  invalid: ImportInvalidRow[];
+}
+
+export interface ConfirmResult {
+  imported: number;
+  publish: boolean;
+}

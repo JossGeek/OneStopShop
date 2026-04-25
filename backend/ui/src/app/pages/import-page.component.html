@@ -1,0 +1,192 @@
+<section class="import-page">
+
+  <!-- Header -->
+  <header>
+    <p class="eyebrow">Data Management</p>
+    <h1>Bulk Import Offers</h1>
+    <p class="lead">Upload a CSV or Excel file to import offers into the system. Imported offers are queued for automatic scraping to keep them fresh.</p>
+  </header>
+
+  <!-- ── STATE 1: UPLOAD ── -->
+  <div *ngIf="state() === 'upload'" class="step-card">
+    <div class="step-header">
+      <span class="step-badge">Step 1</span>
+      <span class="step-title">Choose a file</span>
+    </div>
+
+    <div class="template-hint">
+      <p class="hint">Need the template? Download it, fill in your offers, then upload it here.</p>
+      <button class="btn-ghost" (click)="onDownloadTemplate()">⬇ Download template (.csv)</button>
+    </div>
+
+    <div class="upload-zone" [class.has-file]="selectedFile">
+      <input
+        type="file"
+        id="file-input"
+        accept=".csv,.xlsx"
+        (change)="onFileChange($event)"
+        class="file-input-hidden"
+      />
+      <label for="file-input" class="upload-label">
+        <span class="upload-icon">📂</span>
+        <span *ngIf="!selectedFile" class="upload-text">Click to select CSV or Excel (.xlsx) file</span>
+        <span *ngIf="selectedFile" class="upload-text file-name">{{ selectedFile.name }}</span>
+      </label>
+    </div>
+
+    <p *ngIf="uploadError()" class="error-msg">{{ uploadError() }}</p>
+
+    <div class="step-actions">
+      <button
+        class="btn-primary"
+        [disabled]="!selectedFile || uploading()"
+        (click)="onPreview()"
+      >
+        <span *ngIf="!uploading()">Preview →</span>
+        <span *ngIf="uploading()">Parsing…</span>
+      </button>
+    </div>
+
+    <!-- Column reference -->
+    <details class="columns-reference">
+      <summary>Column reference</summary>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Column</th>
+            <th>Required</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>url</code></td><td>✓</td><td>Must be a valid URL (https://…)</td></tr>
+          <tr><td><code>offer_type</code></td><td>✓</td><td>E.g. training, thesis, internship, research_group…</td></tr>
+          <tr><td><code>organization</code></td><td>✓</td><td>Must match an organisation name in the system</td></tr>
+          <tr><td><code>target_profile</code></td><td>✓</td><td>student / company / researcher</td></tr>
+          <tr><td><code>country</code></td><td>✓</td><td>2-letter ISO code, e.g. IT, SE, DE</td></tr>
+          <tr><td><code>title</code></td><td>–</td><td>Optional — scraper will fill it in</td></tr>
+          <tr><td><code>summary</code></td><td>–</td><td>Optional — scraper will fill it in</td></tr>
+          <tr><td><code>domains</code></td><td>–</td><td>Comma-separated, e.g. AI,Digitalisation</td></tr>
+        </tbody>
+      </table>
+    </details>
+  </div>
+
+  <!-- ── STATE 2: PREVIEW ── -->
+  <div *ngIf="state() === 'preview'" class="step-card">
+    <div class="step-header">
+      <span class="step-badge">Step 2</span>
+      <span class="step-title">Review and confirm</span>
+      <button class="btn-ghost small" (click)="onBack()">← Back</button>
+    </div>
+
+    <div class="preview-summary">
+      <span class="pill pill-ok">{{ validRows.length }} valid</span>
+      <span class="pill pill-error" *ngIf="invalidRows.length > 0">{{ invalidRows.length }} invalid</span>
+      <span class="muted small">{{ selectedRows.size }} selected for import</span>
+    </div>
+
+    <!-- Valid rows table -->
+    <div *ngIf="validRows.length > 0">
+      <p class="section-title">Valid rows</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="check-col">
+                <input type="checkbox" [checked]="allSelected" [indeterminate]="someSelected" (change)="toggleAll()" />
+              </th>
+              <th>#</th>
+              <th>URL</th>
+              <th>Title</th>
+              <th>Organization</th>
+              <th>Type</th>
+              <th>Profile</th>
+              <th>Country</th>
+              <th>Warnings</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of validRows" [class.selected-row]="isSelected(r.row)">
+              <td class="check-col">
+                <input type="checkbox" [checked]="isSelected(r.row)" (change)="toggleRow(r.row)" />
+              </td>
+              <td class="muted small">{{ r.row }}</td>
+              <td class="url-cell small" [title]="r.data['url']">{{ r.data['url'] }}</td>
+              <td class="small">{{ r.data['title'] || '—' }}</td>
+              <td class="small">{{ r.data['organization'] }}</td>
+              <td class="small">{{ r.data['offer_type'] }}</td>
+              <td class="small">{{ r.data['target_profile'] }}</td>
+              <td class="small">{{ r.data['country'] }}</td>
+              <td class="small warn-col">
+                <span *ngFor="let w of r.warnings" class="warning-item">⚠ {{ w }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Invalid rows -->
+    <div *ngIf="invalidRows.length > 0" class="invalid-section">
+      <p class="section-title">Invalid rows — will not be imported</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>URL / identifier</th>
+              <th>Errors</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of invalidRows" class="failed-row">
+              <td class="muted small">{{ r.row }}</td>
+              <td class="url-cell small" [title]="r.data['url']">{{ r.data['url'] || '(no url)' }}</td>
+              <td class="small">
+                <span *ngFor="let e of r.errors" class="error-item">{{ e }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p *ngIf="confirmError()" class="error-msg">{{ confirmError() }}</p>
+
+    <div class="step-actions confirm-actions">
+      <span class="muted small">{{ selectedRows.size }} of {{ validRows.length }} valid rows selected</span>
+      <button
+        class="btn-ghost"
+        [disabled]="selectedRows.size === 0 || confirming()"
+        (click)="onConfirm(false)"
+      >
+        <span *ngIf="!confirming()">Save as draft</span>
+        <span *ngIf="confirming()">Importing…</span>
+      </button>
+      <button
+        class="btn-primary"
+        [disabled]="selectedRows.size === 0 || confirming()"
+        (click)="onConfirm(true)"
+      >
+        <span *ngIf="!confirming()">Save &amp; publish</span>
+        <span *ngIf="confirming()">Importing…</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── STATE 3: RESULT ── -->
+  <div *ngIf="state() === 'result' && confirmResult" class="step-card result-card">
+    <div class="result-icon">✓</div>
+    <h2>Import complete</h2>
+    <p class="result-summary">
+      <strong>{{ confirmResult.imported }}</strong> offer{{ confirmResult.imported !== 1 ? 's' : '' }}
+      imported as <strong>{{ confirmResult.publish ? 'published' : 'draft' }}</strong>.
+    </p>
+    <p class="hint">Each imported URL has been added to the crawler queue and will be enriched automatically.</p>
+    <div class="step-actions">
+      <button class="btn-primary" (click)="onReset()">Import another file</button>
+    </div>
+  </div>
+
+</section>

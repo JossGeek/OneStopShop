@@ -2,14 +2,17 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
+  ConfirmResult,
   CountryLookup,
   DomainLookup,
+  ImportValidRow,
   LlmStats,
   LookupResponse,
   OfferListResponse,
   OfferQueryParams,
   OrganizationLookup,
   OfferTypeLookup,
+  PreviewResult,
   ScrapingOverview,
   ScrapingRunDetail,
   ScrapingRunListResponse,
@@ -71,6 +74,20 @@ export class OssApiService {
     return this.http.get<LlmStats>(`${this.apiBaseUrl}/scraping/llm/stats`, {
       params: this.buildParams({ window }),
     });
+  }
+
+  previewImport(file: File): Observable<PreviewResult> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<PreviewResult>(`${this.apiBaseUrl}/offers/import/preview`, form);
+  }
+
+  confirmImport(rows: ImportValidRow[], publish: boolean): Observable<ConfirmResult> {
+    return this.http.post<ConfirmResult>(`${this.apiBaseUrl}/offers/import/confirm`, { rows, publish });
+  }
+
+  getImportTemplate(): void {
+    window.open(`${this.apiBaseUrl}/offers/import/template`, '_blank');
   }
 
   private buildParams(

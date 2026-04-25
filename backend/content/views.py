@@ -1,14 +1,17 @@
+import json
 from collections import defaultdict
 from datetime import timedelta
 from math import ceil
+from pathlib import Path
 from uuid import UUID
 
 from django.db.models import Count, Max, Q
-from django.http import JsonResponse
+from django.http import FileResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_http_methods
 
 from content.models import CrawlUrl, Domain, Offer, OfferType, Organization, ScrapingRun
 
@@ -826,3 +829,62 @@ def scraping_llm_stats(request):
 		"avg_confidence_llm": round(sum(confidence_llm) / len(confidence_llm), 3) if confidence_llm else None,
 		"avg_confidence_deterministic": round(sum(confidence_det) / len(confidence_det), 3) if confidence_det else None,
 	})
+
+
+# ── Offer import ──────────────────────────────────────────────────────────────
+
+@require_GET
+def import_template(request):
+	"""GET /api/offers/import/template — download CSV template."""
+	template_path = Path(__file__).parent / "ingestion" / "import_template.csv"
+	return FileResponse(
+		open(template_path, "rb"),
+		as_attachment=True,
+		filename="oss_import_template.csv",
+		content_type="text/csv",
+	)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def import_preview(request):
+	"""POST /api/offers/import/preview — parse + validate CSV/Excel, no DB writes."""
+	from content.ingestion.importer import ImportService  # noqa: PLC0415
+
+	f = request.FILES.get("file")
+	if not f:
+		return JsonResponse({"error": "No file provided. Send as multipart field 'file'."}, status=400)
+
+	try:
+		result = ImportService().preview(f, f.name)
+	except Exception as exc:
+		return JsonResponse({"error": f"Failed to parse file: {exc}"}, status=400)
+
+	return JsonResponse(result.to_dict())
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def import_confirm(request):
+	"""POST /api/offers/import/confirm — write confirmed valid rows to DB.
+	Body: {"rows": [...valid row objects from preview...], "publish": bool}
+	"""
+	from content.ingestion.importer import ImportService  # noqa: PLC0415
+
+	try:
+		body = json.loads(request.body)
+	except json.JSONDecodeError:
+		return JsonResponse({"error": "Invalid JSON body."}, status=400)
+
+	valid_rows = body.get("rows", [])
+	publish = bool(body.get("publish", False))
+
+	if not isinstance(valid_rows, list):
+		return JsonResponse({"error": "'rows' must be a list."}, status=400)
+
+	try:
+		result = ImportService().confirm(valid_rows, publish)
+	except Exception as exc:
+		return JsonResponse({"error": f"Import failed: {exc}"}, status=500)
+
+	return JsonResponse(result.to_dict())

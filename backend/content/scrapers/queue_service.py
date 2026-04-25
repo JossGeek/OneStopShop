@@ -2,6 +2,7 @@ import logging
 import os
 from dataclasses import replace
 from datetime import timedelta
+from types import SimpleNamespace
 
 import requests
 from django.db import transaction
@@ -108,6 +109,10 @@ class UrlScraperService(ScrapeService):
         )
 
         for crawl_url in batch:
+            if crawl_url.source_key.startswith("import__"):
+                self._scrape_import_url(crawl_url, ingestion_user, stats, logs)
+                continue
+
             source = source_map.get(crawl_url.source_key)
             if source is None:
                 LOGGER.warning("URL scraper — source_key %r not in registry, archiving", crawl_url.source_key)
@@ -253,6 +258,89 @@ class UrlScraperService(ScrapeService):
         logs.append({"ts": _ts(), "event": "url_processed", "level": "info",
                      "source_key": source.key, "url": crawl_url.url,
                      "method": extracted.method, "confidence": extracted.confidence, "action": action})
+
+    def _scrape_import_url(
+        self,
+        crawl_url: CrawlUrl,
+        ingestion_user,
+        stats: dict,
+        logs: list[dict],
+    ) -> None:
+        """Handles CrawlUrl entries created by the bulk import flow (source_key starts with 'import__').
+        Uses the linked offer's existing org/type metadata instead of a SourceDefinition lookup.
+        Only enriches title/summary/details from the scraped page — does not overwrite org or type.
+        """
+        offer = crawl_url.offer
+        if offer is None:
+            LOGGER.warning("Import URL %s has no linked offer — archiving", crawl_url.url)
+            crawl_url.status = CrawlUrl.UrlStatus.ARCHIVED
+            crawl_url.last_error = "no_linked_offer"
+            crawl_url.save()
+            stats["archived"] += 1
+            return
+
+        # Ensure related fields are loaded
+        offer.refresh_from_db()
+
+        try:
+            html, _ = self._fetch_html_url(crawl_url.url)
+        except requests.exceptions.HTTPError as exc:
+            http_status = exc.response.status_code if exc.response is not None else None
+            self._handle_http_error(crawl_url, http_status, stats)
+            logs.append({"ts": _ts(), "event": "url_failed", "level": "warn",
+                         "source_key": crawl_url.source_key, "url": crawl_url.url,
+                         "http_status": http_status, "reason": "http_error"})
+            return
+        except requests.RequestException as exc:
+            self._handle_transient_error(crawl_url, str(exc), None, stats)
+            logs.append({"ts": _ts(), "event": "url_failed", "level": "warn",
+                         "source_key": crawl_url.source_key, "url": crawl_url.url,
+                         "reason": "request_error", "message": str(exc)})
+            return
+
+        page_source = SimpleNamespace(
+            url=crawl_url.url,
+            name=offer.title or offer.offer_type.name,
+            organization=offer.organization.name,
+            offer_type=offer.offer_type.name,
+            country=offer.country,
+        )
+        extracted = extract_deterministic(html, page_source)
+
+        changed = False
+        if extracted.title and extracted.title != offer.title:
+            offer.title = extracted.title
+            changed = True
+        if extracted.summary and extracted.summary != offer.summary:
+            offer.summary = extracted.summary
+            changed = True
+
+        offer.details = {
+            **offer.details,
+            "scraping": {
+                "method": extracted.method,
+                "confidence": extracted.confidence,
+                "last_seen_at": _ts(),
+                "managed": True,
+            },
+        }
+        offer.updated_by = ingestion_user
+        offer.save()
+
+        crawl_url.offer = offer
+        crawl_url.consecutive_errors = 0
+        crawl_url.last_error = ""
+        self._mark_done(crawl_url)
+
+        action = "updated" if changed else "unchanged"
+        stats["processed"] += 1
+        stats[action] += 1
+        LOGGER.info("[%s] IMPORT %s — %s (conf=%.2f)", crawl_url.source_key, action.upper(), crawl_url.url, extracted.confidence)
+        logs.append({
+            "ts": _ts(), "event": "url_processed", "level": "info",
+            "source_key": crawl_url.source_key, "url": crawl_url.url,
+            "method": extracted.method, "confidence": extracted.confidence, "action": action,
+        })
 
     def _mark_done(self, crawl_url: CrawlUrl) -> None:
         crawl_url.status = CrawlUrl.UrlStatus.DONE

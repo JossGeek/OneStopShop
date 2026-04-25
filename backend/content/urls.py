@@ -16,6 +16,9 @@ urlpatterns = [
     path("lookups/domains", views.domains, name="domains"),
     path("lookups/organizations", views.organizations, name="organizations"),
     path("lookups/countries", views.countries, name="countries"),
+    path("offers/import/template", views.import_template, name="import-template"),
+    path("offers/import/preview", views.import_preview, name="import-preview"),
+    path("offers/import/confirm", views.import_confirm, name="import-confirm"),
     path("offers", views.offers, name="offers"),
     path("offers/<str:offer_id>", views.offer_detail, name="offer-detail"),
 ]

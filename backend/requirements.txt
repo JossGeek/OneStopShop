@@ -9,3 +9,4 @@ uvicorn[standard]
 trafilatura>=1.9
 ollama>=0.4
 scrapy>=2.11
+openpyxl>=3.1

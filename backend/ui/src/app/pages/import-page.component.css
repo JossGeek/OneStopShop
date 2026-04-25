@@ -1,0 +1,320 @@
+:host { display: block; }
+
+.import-page {
+  display: grid;
+  gap: 1rem;
+  max-width: 1100px;
+}
+
+/* ── Header ── */
+header {
+  background: linear-gradient(140deg, #fff8e6, #ecf7f2);
+  border-radius: 16px;
+  border: 1px solid #e7ddbe;
+  padding: 1.2rem;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: #7a5a13;
+}
+
+header h1 {
+  margin: 0.3rem 0 0.4rem;
+  font-family: 'Fraunces', serif;
+  color: #223241;
+}
+
+.lead { margin: 0; color: #3d505d; }
+
+/* ── Step card ── */
+.step-card {
+  background: #fff;
+  border: 1px solid #d6e4ef;
+  border-radius: 14px;
+  padding: 1.2rem 1.4rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.step-badge {
+  background: #e0f0fa;
+  color: #1a4d73;
+  border-radius: 20px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.step-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f3041;
+  flex: 1;
+}
+
+/* ── Template hint ── */
+.template-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  background: #f8fbff;
+  border: 1px solid #d6e4ef;
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+}
+
+.template-hint .hint { margin: 0; font-size: 0.84rem; color: #4c5d6f; }
+
+/* ── Upload zone ── */
+.upload-zone {
+  border: 2px dashed #b6c8d8;
+  border-radius: 12px;
+  background: #f8fbff;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.upload-zone:hover,
+.upload-zone.has-file { border-color: #23638f; background: #eef6fd; }
+
+.file-input-hidden {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 2rem 1rem;
+  cursor: pointer;
+}
+
+.upload-icon { font-size: 2rem; }
+
+.upload-text {
+  font-size: 0.88rem;
+  color: #4c5d6f;
+  text-align: center;
+}
+
+.file-name { color: #1a4d73; font-weight: 600; }
+
+/* ── Column reference ── */
+.columns-reference {
+  border: 1px solid #d6e4ef;
+  border-radius: 10px;
+}
+
+.columns-reference summary {
+  padding: 0.5rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.84rem;
+  color: #4a5c6f;
+  user-select: none;
+}
+
+.columns-reference .data-table { margin: 0; }
+.columns-reference .data-table td,
+.columns-reference .data-table th { padding: 0.35rem 0.7rem; }
+.columns-reference code {
+  background: #eef6fd;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #1a4d73;
+}
+
+/* ── Preview summary pills ── */
+.preview-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pill {
+  padding: 0.15rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.pill-ok { background: #e7f4ea; color: #1d7347; }
+.pill-error { background: #ffe4e4; color: #9e2a2a; }
+
+/* ── Tables ── */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #d6e4ef;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  background: #f4f8fb;
+  border-bottom: 2px solid #d6e4ef;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4a5c6f;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #edf2f7;
+  vertical-align: top;
+}
+
+.data-table tr:hover td { background: #f8fbff; }
+
+.check-col { width: 36px; text-align: center; }
+
+.url-cell {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-row td { background: #f0f9ff; }
+.selected-row:hover td { background: #e6f4ff; }
+.failed-row td { background: #fff8f8; }
+.failed-row:hover td { background: #fff0f0; }
+
+.warn-col { max-width: 200px; }
+
+.warning-item {
+  display: block;
+  font-size: 0.74rem;
+  color: #856404;
+  margin-bottom: 0.15rem;
+}
+
+.error-item {
+  display: block;
+  font-size: 0.74rem;
+  color: #9e2a2a;
+  margin-bottom: 0.15rem;
+}
+
+/* ── Invalid section ── */
+.invalid-section {
+  display: grid;
+  gap: 0.5rem;
+}
+
+/* ── Actions ── */
+.step-actions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.confirm-actions { justify-content: flex-end; }
+
+/* ── Buttons ── */
+.btn-primary {
+  padding: 0.4rem 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #23638f;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid #b6c8d8;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.84rem;
+  color: #23638f;
+}
+
+.btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-ghost.small { padding: 0.2rem 0.55rem; font-size: 0.78rem; }
+
+/* ── Section title ── */
+.section-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #4a5c6f;
+  margin: 0;
+}
+
+/* ── Result card ── */
+.result-card {
+  text-align: center;
+  padding: 2.5rem 1.4rem;
+}
+
+.result-icon {
+  font-size: 3rem;
+  color: #1d7347;
+  background: #e7f4ea;
+  border-radius: 50%;
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.8rem;
+  font-weight: 700;
+}
+
+.result-card h2 { margin: 0 0 0.5rem; color: #1f3041; }
+
+.result-summary { font-size: 1rem; color: #3d505d; margin: 0 0 0.3rem; }
+
+/* ── Error ── */
+.error-msg {
+  color: #9e2a2a;
+  background: #fff0f0;
+  border: 1px solid #f0c8c8;
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.84rem;
+  margin: 0;
+}
+
+/* ── Misc ── */
+.muted { color: #6a7e8f; }
+.small { font-size: 0.78rem; }
+.hint { margin: 0; color: #4d5e70; font-size: 0.84rem; }
