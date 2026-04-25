@@ -70,7 +70,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { rawOpportunities, applyFilters } from './opportunities.js';
+import { rawOpportunities, applyFilters } from '../../../public/scripts/Opportunities.js';
 
 // Состояние
 const searchQuery = ref('');
@@ -101,8 +101,3 @@ const resetFilters = () => {
 };
 </script>
 
-<style scoped>
-.filter-chip { cursor: pointer; transition: 0.2s; }
-.filter-chip.active { background: #000; color: #fff; border-color: #000; }
-.btn-view { text-decoration: none; }
-</style>
