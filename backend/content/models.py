@@ -1,5 +1,6 @@
 import uuid
 
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 
@@ -286,4 +287,129 @@ class ScrapingRun(TimeStampedModel):
 		indexes = [
 			models.Index(fields=["status"], name="idx_scraping_run_status"),
 			models.Index(fields=["source_key", "-created_at"], name="idx_scraping_run_source"),
+		]
+
+
+class UserProfile(TimeStampedModel):
+	# Profile preferences stay lightweight for Stage 1 so the API can expose
+	# dashboard-ready data without introducing more relational tables than needed.
+	id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+	bio = models.TextField(blank=True, default="")
+	avatar_url = models.URLField(max_length=500, blank=True, null=True)
+	preferred_domains = models.JSONField(default=list, blank=True)
+	preferred_countries = models.JSONField(default=list, blank=True)
+	notification_enabled = models.BooleanField(default=True)
+
+	class Meta:
+		db_table = "user_profile"
+
+
+class UserNeed(TimeStampedModel):
+	class NeedStatus(models.TextChoices):
+		ACTIVE = "active", "Active"
+		FULFILLED = "fulfilled", "Fulfilled"
+		ARCHIVED = "archived", "Archived"
+
+	id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="needs")
+	title = models.CharField(max_length=255)
+	description = models.TextField()
+	target_profile = models.ForeignKey(
+		TargetProfile,
+		on_delete=models.PROTECT,
+		related_name="user_needs",
+	)
+	status = models.CharField(
+		max_length=20,
+		choices=NeedStatus.choices,
+		default=NeedStatus.ACTIVE,
+	)
+	countries = models.JSONField(default=list, blank=True)
+	domains = models.ManyToManyField(Domain, through="UserNeedDomain", related_name="user_needs")
+
+	class Meta:
+		db_table = "user_need"
+		ordering = ["-created_at"]
+		indexes = [
+			models.Index(fields=["user", "status"], name="idx_user_need_status"),
+			models.Index(fields=["user", "-created_at"], name="idx_user_need_created"),
+		]
+
+
+class UserNeedDomain(models.Model):
+	id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	user_need = models.ForeignKey(UserNeed, on_delete=models.CASCADE, related_name="domain_links")
+	domain = models.ForeignKey(Domain, on_delete=models.CASCADE, related_name="user_need_links")
+
+	class Meta:
+		db_table = "user_need_domain"
+		constraints = [
+			models.UniqueConstraint(
+				fields=["user_need", "domain"],
+				name="uniq_user_need_domain",
+			),
+		]
+
+
+class UserFavorite(TimeStampedModel):
+	id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favorites")
+	offer = models.ForeignKey(Offer, on_delete=models.CASCADE, related_name="favorited_by")
+	note = models.TextField(blank=True, default="")
+
+	class Meta:
+		db_table = "user_favorite"
+		ordering = ["-created_at"]
+		constraints = [
+			models.UniqueConstraint(
+				fields=["user", "offer"],
+				name="uniq_user_favorite",
+			),
+		]
+		indexes = [
+			models.Index(fields=["user", "-created_at"], name="idx_user_favorite_created"),
+		]
+
+
+class MatchingHit(TimeStampedModel):
+	class MatchStatus(models.TextChoices):
+		NEW = "new", "New"
+		VIEWED = "viewed", "Viewed"
+		INTERESTED = "interested", "Interested"
+		DECLINED = "declined", "Declined"
+
+	id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="matching_hits")
+	need = models.ForeignKey(UserNeed, on_delete=models.CASCADE, related_name="matching_hits")
+	offer = models.ForeignKey(Offer, on_delete=models.CASCADE, related_name="matching_hits")
+	match_score = models.DecimalField(
+		max_digits=5,
+		decimal_places=4,
+		validators=[MinValueValidator(0), MaxValueValidator(1)],
+	)
+	match_reason = models.TextField()
+	status = models.CharField(
+		max_length=20,
+		choices=MatchStatus.choices,
+		default=MatchStatus.NEW,
+	)
+	viewed_at = models.DateTimeField(blank=True, null=True)
+
+	class Meta:
+		db_table = "matching_hit"
+		ordering = ["-match_score", "-created_at"]
+		constraints = [
+			models.UniqueConstraint(
+				fields=["need", "offer"],
+				name="uniq_matching_hit_need_offer",
+			),
+			models.CheckConstraint(
+				condition=Q(match_score__gte=0) & Q(match_score__lte=1),
+				name="matching_hit_score_range",
+			),
+		]
+		indexes = [
+			models.Index(fields=["user", "status"], name="idx_matching_hit_status"),
+			models.Index(fields=["user", "-match_score"], name="idx_matching_hit_score"),
 		]

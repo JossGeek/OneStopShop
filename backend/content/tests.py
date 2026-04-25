@@ -1,9 +1,12 @@
 import uuid
 
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.test import TestCase
 
 from content.models import (
 	Domain,
+	MatchingHit,
 	Offer,
 	OfferDomain,
 	OfferType,
@@ -12,6 +15,10 @@ from content.models import (
 	SourceType,
 	TargetProfile,
 	User,
+	UserFavorite,
+	UserNeed,
+	UserNeedDomain,
+	UserProfile,
 )
 
 
@@ -206,3 +213,282 @@ class ReadApiTests(TestCase):
 	def test_offer_detail_not_found(self):
 		response = self.client.get(f"/api/offers/{uuid.uuid4()}")
 		self.assertEqual(response.status_code, 404)
+
+
+class UserDashboardModelTests(TestCase):
+	@classmethod
+	def setUpTestData(cls):
+		cls.domain_ai = Domain.objects.create(name="AI")
+		cls.domain_data = Domain.objects.create(name="Data Science")
+		cls.target_profile = TargetProfile.objects.create(
+			name="research_lab",
+			description="Research lab",
+		)
+		cls.source_type = SourceType.objects.create(name="portal", description="Portal")
+		cls.offer_type = OfferType.objects.create(name="grant", description="Grant")
+		cls.organization = Organization.objects.create(
+			name="Innovation Hub",
+			type=Organization.OrganizationType.COMPANY,
+			country="DE",
+			website="https://innovation.example",
+		)
+		cls.user = User.objects.create(
+			username="dashboard-user",
+			email="dashboard@example.com",
+			password_hash="secret",
+		)
+		cls.other_user = User.objects.create(
+			username="other-dashboard-user",
+			email="other-dashboard@example.com",
+			password_hash="secret",
+		)
+		cls.offer = Offer.objects.create(
+			title="AI Collaboration Fund",
+			summary="Funding support",
+			link="https://innovation.example/offers/ai-fund",
+			country="DE",
+			details={"kind": "fund"},
+			status=Offer.OfferStatus.PUBLISHED,
+			source_type=cls.source_type,
+			target_profile=cls.target_profile,
+			organization=cls.organization,
+			created_by=cls.user,
+			updated_by=cls.user,
+			offer_type=cls.offer_type,
+		)
+
+	def test_user_profile_defaults(self):
+		profile = UserProfile.objects.create(user=self.user)
+
+		self.assertEqual(profile.bio, "")
+		self.assertEqual(profile.preferred_domains, [])
+		self.assertEqual(profile.preferred_countries, [])
+		self.assertTrue(profile.notification_enabled)
+
+	def test_user_profile_enforces_one_to_one_relationship(self):
+		UserProfile.objects.create(user=self.user)
+
+		with self.assertRaises(IntegrityError):
+			UserProfile.objects.create(user=self.user)
+
+	def test_user_profile_deleted_with_user(self):
+		user = User.objects.create(
+			username="profile-owner",
+			email="profile-owner@example.com",
+			password_hash="secret",
+		)
+		profile = UserProfile.objects.create(user=user)
+
+		user.delete()
+
+		self.assertFalse(UserProfile.objects.filter(id=profile.id).exists())
+
+	def test_user_need_defaults_to_active_status(self):
+		need = UserNeed.objects.create(
+			user=self.user,
+			title="Need partners",
+			description="Looking for AI partners",
+			target_profile=self.target_profile,
+		)
+
+		self.assertEqual(need.status, UserNeed.NeedStatus.ACTIVE)
+		self.assertEqual(need.countries, [])
+
+	def test_user_need_can_link_domains_via_through_model(self):
+		need = UserNeed.objects.create(
+			user=self.user,
+			title="Need domain support",
+			description="Need AI and data support",
+			target_profile=self.target_profile,
+		)
+		UserNeedDomain.objects.create(user_need=need, domain=self.domain_ai)
+		UserNeedDomain.objects.create(user_need=need, domain=self.domain_data)
+
+		self.assertEqual(need.domains.count(), 2)
+
+	def test_user_need_domain_requires_unique_pair(self):
+		need = UserNeed.objects.create(
+			user=self.user,
+			title="Need unique domain",
+			description="Testing unique constraint",
+			target_profile=self.target_profile,
+		)
+		UserNeedDomain.objects.create(user_need=need, domain=self.domain_ai)
+
+		with self.assertRaises(IntegrityError):
+			UserNeedDomain.objects.create(user_need=need, domain=self.domain_ai)
+
+	def test_user_need_deleted_with_owner(self):
+		need = UserNeed.objects.create(
+			user=self.user,
+			title="Need ownership cleanup",
+			description="Should be deleted with user",
+			target_profile=self.target_profile,
+		)
+
+		self.user.delete()
+
+		self.assertFalse(UserNeed.objects.filter(id=need.id).exists())
+
+	def test_user_favorite_allows_blank_note(self):
+		favorite = UserFavorite.objects.create(user=self.user, offer=self.offer)
+
+		self.assertEqual(favorite.note, "")
+
+	def test_user_favorite_requires_unique_user_offer_pair(self):
+		UserFavorite.objects.create(user=self.user, offer=self.offer)
+
+		with self.assertRaises(IntegrityError):
+			UserFavorite.objects.create(user=self.user, offer=self.offer)
+
+	def test_user_favorite_allows_different_users_for_same_offer(self):
+		UserFavorite.objects.create(user=self.user, offer=self.offer)
+		second = UserFavorite.objects.create(user=self.other_user, offer=self.offer)
+
+		self.assertEqual(second.offer_id, self.offer.id)
+
+	def test_matching_hit_defaults_to_new_status(self):
+		need = UserNeed.objects.create(
+			user=self.user,
+			title="Need matching",
+			description="Matching test",
+			target_profile=self.target_profile,
+		)
+		hit = MatchingHit.objects.create(
+			user=self.user,
+			need=need,
+			offer=self.offer,
+			match_score="0.9200",
+			match_reason="Strong alignment",
+		)
+
+		self.assertEqual(hit.status, MatchingHit.MatchStatus.NEW)
+		self.assertIsNone(hit.viewed_at)
+
+	def test_matching_hit_requires_unique_need_offer_pair(self):
+		need = UserNeed.objects.create(
+			user=self.user,
+			title="Need unique match",
+			description="Unique match",
+			target_profile=self.target_profile,
+		)
+		MatchingHit.objects.create(
+			user=self.user,
+			need=need,
+			offer=self.offer,
+			match_score="0.7500",
+			match_reason="Good fit",
+		)
+
+		with self.assertRaises(IntegrityError):
+			MatchingHit.objects.create(
+				user=self.user,
+				need=need,
+				offer=self.offer,
+				match_score="0.8000",
+				match_reason="Duplicate fit",
+			)
+
+	def test_matching_hit_allows_same_offer_for_different_need(self):
+		first_need = UserNeed.objects.create(
+			user=self.user,
+			title="First need",
+			description="First",
+			target_profile=self.target_profile,
+		)
+		second_need = UserNeed.objects.create(
+			user=self.user,
+			title="Second need",
+			description="Second",
+			target_profile=self.target_profile,
+		)
+		MatchingHit.objects.create(
+			user=self.user,
+			need=first_need,
+			offer=self.offer,
+			match_score="0.6500",
+			match_reason="First fit",
+		)
+		second_hit = MatchingHit.objects.create(
+			user=self.user,
+			need=second_need,
+			offer=self.offer,
+			match_score="0.8800",
+			match_reason="Second fit",
+		)
+
+		self.assertEqual(second_hit.need_id, second_need.id)
+
+	def test_matching_hit_deleted_with_need(self):
+		need = UserNeed.objects.create(
+			user=self.user,
+			title="Need cascade",
+			description="Cascade test",
+			target_profile=self.target_profile,
+		)
+		hit = MatchingHit.objects.create(
+			user=self.user,
+			need=need,
+			offer=self.offer,
+			match_score="0.9100",
+			match_reason="Cascade fit",
+		)
+
+		need.delete()
+
+		self.assertFalse(MatchingHit.objects.filter(id=hit.id).exists())
+
+	def test_matching_hit_score_validators_reject_value_below_zero(self):
+		need = UserNeed.objects.create(
+			user=self.user,
+			title="Need validator low",
+			description="Low validator",
+			target_profile=self.target_profile,
+		)
+		hit = MatchingHit(
+			user=self.user,
+			need=need,
+			offer=self.offer,
+			match_score="-0.1000",
+			match_reason="Invalid score",
+		)
+
+		with self.assertRaises(ValidationError):
+			hit.full_clean()
+
+	def test_matching_hit_score_validators_reject_value_above_one(self):
+		need = UserNeed.objects.create(
+			user=self.user,
+			title="Need validator high",
+			description="High validator",
+			target_profile=self.target_profile,
+		)
+		hit = MatchingHit(
+			user=self.user,
+			need=need,
+			offer=self.offer,
+			match_score="1.1000",
+			match_reason="Invalid score",
+		)
+
+		with self.assertRaises(ValidationError):
+			hit.full_clean()
+
+	def test_matching_hit_score_accepts_value_between_zero_and_one(self):
+		need = UserNeed.objects.create(
+			user=self.user,
+			title="Need validator valid",
+			description="Valid validator",
+			target_profile=self.target_profile,
+		)
+		hit = MatchingHit(
+			user=self.user,
+			need=need,
+			offer=self.offer,
+			match_score="0.5000",
+			match_reason="Valid score",
+		)
+
+		hit.full_clean()
+
+		self.assertEqual(str(hit.match_score), "0.5000")
