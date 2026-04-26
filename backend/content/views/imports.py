@@ -164,9 +164,12 @@ def import_preview(request):
 
     try:
         result = ImportService().preview(f, f.name)
-    except Exception as exc:
-        logger.exception("Import preview failed")
+    except (ValueError, ImportError, UnicodeDecodeError):
+        logger.warning("Import preview: bad file format", exc_info=True)
         return JsonResponse({"error": "Failed to parse file. Check format and required columns."}, status=400)
+    except Exception:
+        logger.exception("Import preview: unexpected error")
+        return JsonResponse({"error": "An unexpected error occurred. Please try again."}, status=500)
 
     return JsonResponse(result.to_dict())
 
@@ -191,8 +194,10 @@ def import_confirm(request):
             return JsonResponse({"error": f"Row {i}: expected object, got {type(entry).__name__}."}, status=400)
         if not isinstance(entry.get("data"), dict):
             return JsonResponse({"error": f"Row {i}: missing or invalid 'data' field."}, status=400)
-        if not entry["data"].get("url"):
-            return JsonResponse({"error": f"Row {i}: 'data.url' is required."}, status=400)
+        _REQUIRED_DATA_FIELDS = ("url", "offer_type", "organization", "target_profile", "country")
+        for field in _REQUIRED_DATA_FIELDS:
+            if not entry["data"].get(field):
+                return JsonResponse({"error": f"Row {i}: 'data.{field}' is required."}, status=400)
 
     try:
         result = ImportService().confirm(valid_rows)

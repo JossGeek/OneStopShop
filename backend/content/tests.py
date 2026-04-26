@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import uuid
 
 from django.test import TestCase
@@ -355,6 +356,40 @@ class ImportEndpointTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(payload["drafts"], 1)
 		self.assertEqual(payload["published"], 1)
+
+	def test_import_confirm_row_not_object(self):
+		response = self.client.post(
+			"/api/offers/import/confirm",
+			data=json.dumps({"rows": [42]}),
+			content_type="application/json",
+		)
+		self.assertEqual(response.status_code, 400)
+		self.assertIn("Row 0", response.json()["error"])
+
+	def test_import_confirm_missing_required_field(self):
+		row = {"data": self._valid_row(), "status": "draft"}
+		del row["data"]["offer_type"]
+		response = self.client.post(
+			"/api/offers/import/confirm",
+			data=json.dumps({"rows": [row]}),
+			content_type="application/json",
+		)
+		self.assertEqual(response.status_code, 400)
+		self.assertIn("offer_type", response.json()["error"])
+
+	def test_import_confirm_bad_row_no_partial_write(self):
+		valid_url = "https://example.edu/atomic-check"
+		good_row = {"data": self._valid_row(url=valid_url), "status": "draft"}
+		bad_row = {"data": self._valid_row(), "status": "draft"}
+		del bad_row["data"]["organization"]
+		offer_count_before = Offer.objects.count()
+		response = self.client.post(
+			"/api/offers/import/confirm",
+			data=json.dumps({"rows": [good_row, bad_row]}),
+			content_type="application/json",
+		)
+		self.assertEqual(response.status_code, 400)
+		self.assertEqual(Offer.objects.count(), offer_count_before)
 
 
 class ScrapingAnalyticsTests(TestCase):
