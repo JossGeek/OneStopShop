@@ -291,6 +291,13 @@ def _get_user_need_or_error(user: User, need_id: str) -> tuple[UserNeed | None, 
 
 
 def _build_stage_zero_paths() -> dict:
+	# The live OpenAPI schema must only describe reachable endpoints.
+	# Keep stage-zero contract definitions out of the published runtime schema
+	# until matching routes/views exist or are exposed as explicit 501 handlers.
+	return {}
+
+
+def _build_stage_zero_planned_paths() -> dict:
 	# Stage 0 publishes the future dashboard contract early so frontend work can
 	# start before the backing views and models are fully implemented.
 	return {
