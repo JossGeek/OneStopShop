@@ -16,10 +16,27 @@ def api_docs(request):
     return render(
         request,
         "content/api_docs.html",
-        {"schema_url": reverse("openapi-schema")},
+        {
+            "schema_url": reverse("openapi-schema"),
+            "docs_variant": "swagger",
+            "page_title": "OSS API Docs",
+        },
     )
 
 
 @require_GET
 def openapi_schema(request):
     return JsonResponse(_openapi_spec())
+
+
+@require_GET
+def redoc_docs(request):
+    return render(
+        request,
+        "content/api_docs.html",
+        {
+            "schema_url": reverse("openapi-schema"),
+            "docs_variant": "redoc",
+            "page_title": "OSS API ReDoc",
+        },
+    )

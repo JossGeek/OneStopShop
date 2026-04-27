@@ -173,7 +173,7 @@ class Command(BaseCommand):
             name__in=["mobility", "expertise", "event"]
         )
         for ot in removed_types:
-            orphans = ot.offer_set.count()
+            orphans = ot.offers.count()
             if orphans:
                 self.stdout.write(
                     self.style.WARNING(
