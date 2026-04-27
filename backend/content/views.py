@@ -2514,8 +2514,10 @@ def user_matching_hits(request, user_id: str):
 	sort_value = request.GET.get("sort", "-match_score")
 	if sort_value not in {"-match_score", "created_at"}:
 		return _error_response("Invalid sort value.", status=400, error="validation_error")
-	ordering = sort_value if sort_value == "created_at" else "-match_score"
-	queryset = queryset.order_by(ordering, "-created_at")
+	if sort_value == "created_at":
+		queryset = queryset.order_by("-created_at")
+	else:
+		queryset = queryset.order_by("-match_score", "-created_at")
 
 	rows, pagination = _paginate_queryset(request, queryset)
 	return JsonResponse(
