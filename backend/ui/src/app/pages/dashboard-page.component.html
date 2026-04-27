@@ -199,7 +199,7 @@
             </div>
             <p class="meta">{{ favorite.offer.organization }}</p>
             <p>{{ favorite.note || 'No note saved for this favorite yet.' }}</p>
-            <a [href]="favorite.offer.link" target="_blank" rel="noreferrer">Open offer page</a>
+            <a [href]="favorite.offer.link" target="_blank" rel="noopener noreferrer">Open offer page</a>
           </article>
         </div>
         <ng-template #emptyFavorites>
